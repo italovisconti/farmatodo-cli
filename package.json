@@ -14,6 +14,7 @@
     "buscar": "bun run src/index.ts buscar",
     "test": "bun test",
     "dev": "bun run --watch src/index.ts",
+    "screenshot": "bun run scripts/screenshot.ts",
     "build": "bun build --compile --minify src/index.ts --outfile dist/farmatodo"
   },
   "devDependencies": {

@@ -207,11 +207,31 @@ farmatodo config set-ciudad VAL
 
 ---
 
+---
+
+## 📸 Validación Visual y Generador de Screenshots
+
+El proyecto cuenta con un sistema headless de renderizado y captura visual directa de la TUI mediante `@opentui/core/testing` y Pillow:
+
+```bash
+# Genera capturas de pantalla PNG de alta resolución de todas las vistas en .screenshots/
+bun run screenshot
+```
+
+Vistas capturadas automáticamente:
+- `tui_dashboard.png`: Dashboard principal con destacados y tasa oficial.
+- `tui_detail_modal.png`: Modal con inventario en tiempo real por sucursal.
+- `tui_stores.png`: Directorio de farmacias con distancias y estado.
+- `tui_departments.png`: Explorador de categorías.
+- `tui_search.png`: Modo interactivo de búsqueda.
+
+---
+
 ## 🛠️ Tecnologías Utilizadas
 
 - **[Bun](https://bun.sh/):** Runtime de JavaScript ultrarrápido y compilador de binarios nativos.
 - **[TypeScript](https://www.typescriptlang.org/):** Tipado estricto para las respuestas de catálogo y farmacias.
-- **[OpenTUI](https://github.com/anomalyco/opentui):** Framework React para interfaces ricas en la terminal.
+- **[@opentui/core](https://github.com/anomalyco/opentui):** Framework imperativo de alto rendimiento para interfaces de terminal (sin sobrecarga de React ni JSX).
 - **[Commander.js](https://github.com/tj/commander.js):** Parser de argumentos y comandos CLI robusto.
 - **[Picocolors](https://github.com/alexeyraspopov/picocolors):** Formateo ANSI ultra liviano.
 - **[timg](https://timg.systems/) & [terminal-image](https://github.com/sindresorhus/terminal-image):** Renderizado gráfico en terminal.

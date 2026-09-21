@@ -191,7 +191,7 @@ export class FarmatodoTUI {
     });
 
     this.footerText = new TextRenderable(renderer, {
-      content: "[Tab/1-4] Vistas | [/] Buscar | [↑/↓] Navegar | [Enter] Detalle | [p/i] Foto | [c] Ciudad | [q] Salir",
+      content: "[Tab/1-4] Vistas  [/] Buscar  [↑/↓] Navegar  [Enter] Detalle  [p/i] Foto  [c] Ciudad  [q] Salir",
       fg: THEME.white
     });
 
@@ -534,13 +534,13 @@ export class FarmatodoTUI {
     let searchColor = THEME.grayMuted;
 
     if (this.isSearching) {
-      searchContent = `¿Qué buscas?: [${this.searchInput}_] (Enter: Buscar, Esc: Salir)`;
+      searchContent = `¿Buscar?: [${this.searchInput}_] (Enter/Esc)`;
       searchColor = THEME.gold;
     } else if (this.searchQuery) {
-      searchContent = `Filtro: "${this.searchQuery}" [Presiona / para cambiar]`;
+      searchContent = `Filtro: "${this.searchQuery}" [/]`;
       searchColor = THEME.blueAccent;
     } else {
-      searchContent = `Presiona [/] para buscar cualquier producto`;
+      searchContent = "Presiona [/] para buscar";
       searchColor = THEME.grayMuted;
     }
 
@@ -609,13 +609,8 @@ export class FarmatodoTUI {
           const stockCount = p.stores_with_stock?.length || 0;
           const stockText = stockCount > 0 ? `✔ ${stockCount} tiendas` : "✖ Sin stock";
 
-          const itemBox = new BoxRenderable(this.renderer, {
-            flexDirection: "column",
-            marginBottom: 1
-          });
-
           const titleTxt = new TextRenderable(this.renderer, {
-            content: `${isSel ? "▸ " : "  "}${p.mediaDescription.slice(0, 36)}`,
+            content: `${isSel ? "▸ " : "  "}${p.mediaDescription.slice(0, 42)}`,
             fg: isSel ? THEME.gold : THEME.white
           });
 
@@ -624,9 +619,8 @@ export class FarmatodoTUI {
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
-          itemBox.add(titleTxt);
-          itemBox.add(subtitleTxt);
-          this.leftListBox.add(itemBox);
+          this.leftListBox.add(titleTxt);
+          this.leftListBox.add(subtitleTxt);
         });
       }
     } else if (this.activeTab === "stores") {
@@ -642,22 +636,18 @@ export class FarmatodoTUI {
           const isSel = absIdx === this.selectedIndex;
           const dist = st.distanceInKm ? ` (~${st.distanceInKm.toFixed(1)} km)` : "";
 
-          const itemBox = new BoxRenderable(this.renderer, {
-            flexDirection: "column",
-            marginBottom: 1
-          });
-
-          itemBox.add(new TextRenderable(this.renderer, {
+          const titleTxt = new TextRenderable(this.renderer, {
             content: `${isSel ? "▸ " : "  "}${st.name}${dist}`,
             fg: isSel ? THEME.gold : THEME.white
-          }));
+          });
 
-          itemBox.add(new TextRenderable(this.renderer, {
-            content: `    ${st.address.slice(0, 38)}`,
-            fg: THEME.grayMuted
-          }));
+          const subtitleTxt = new TextRenderable(this.renderer, {
+            content: `    ${st.address.slice(0, 42)}`,
+            fg: isSel ? THEME.blueAccent : THEME.grayMuted
+          });
 
-          this.leftListBox.add(itemBox);
+          this.leftListBox.add(titleTxt);
+          this.leftListBox.add(subtitleTxt);
         });
       }
     } else if (this.activeTab === "departments") {
@@ -666,22 +656,12 @@ export class FarmatodoTUI {
         const absIdx = scrollOffset + relIdx;
         const isSel = absIdx === this.selectedIndex;
 
-        const row = new BoxRenderable(this.renderer, {
-          flexDirection: "row",
-          marginBottom: 1
+        const deptTxt = new TextRenderable(this.renderer, {
+          content: `${isSel ? "▸ " : "  "}${d.name} (${d.count})`,
+          fg: isSel ? THEME.gold : THEME.white
         });
 
-        row.add(new TextRenderable(this.renderer, {
-          content: `${isSel ? "▸ " : "  "}${d.name}`,
-          fg: isSel ? THEME.gold : THEME.white
-        }));
-
-        row.add(new TextRenderable(this.renderer, {
-          content: ` (${d.count})`,
-          fg: THEME.blueAccent
-        }));
-
-        this.leftListBox.add(row);
+        this.leftListBox.add(deptTxt);
       });
     } else if (this.activeTab === "cities") {
       const visibleSlice = this.cities.slice(scrollOffset, scrollOffset + (maxVisible * 2));
@@ -690,24 +670,12 @@ export class FarmatodoTUI {
         const isSel = absIdx === this.selectedIndex;
         const isCurrent = c.cityId === this.selectedCity;
 
-        const row = new BoxRenderable(this.renderer, {
-          flexDirection: "row",
-          marginBottom: 1
+        const cityTxt = new TextRenderable(this.renderer, {
+          content: `${isSel ? "▸ " : "  "}[${c.cityId}] ${c.name}${isCurrent ? " (Activa)" : ""}`,
+          fg: isSel ? THEME.gold : isCurrent ? THEME.green : THEME.white
         });
 
-        row.add(new TextRenderable(this.renderer, {
-          content: `${isSel ? "▸ " : "  "}[${c.cityId}] ${c.name}`,
-          fg: isSel ? THEME.gold : isCurrent ? THEME.green : THEME.white
-        }));
-
-        if (isCurrent) {
-          row.add(new TextRenderable(this.renderer, {
-            content: " (Activa)",
-            fg: THEME.blueAccent
-          }));
-        }
-
-        this.leftListBox.add(row);
+        this.leftListBox.add(cityTxt);
       });
     }
 

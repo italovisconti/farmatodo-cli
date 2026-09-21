@@ -172,20 +172,20 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     await testSetup.renderOnce();
 
     let frame = testSetup.captureCharFrame();
-    expect(frame).toContain("¿Qué buscas?: [_]");
+    expect(frame).toContain("¿Buscar?: [_]");
 
     // Escribir texto con typeText
     testSetup.mockInput.typeText("flips");
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).toContain("¿Qué buscas?: [flips_]");
+    expect(frame).toContain("¿Buscar?: [flips_]");
 
     // Cancelar enviando escape
     testSetup.renderer.keyInput.emit("keypress", { name: "escape" });
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).not.toContain("¿Qué buscas?: [flips_]");
+    expect(frame).not.toContain("¿Buscar?: [flips_]");
   });
 });
