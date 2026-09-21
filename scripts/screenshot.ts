@@ -1,5 +1,7 @@
 import { createTestRenderer } from "@opentui/core/testing";
+import { NativeImage } from "@opentui/core";
 import { FarmatodoTUI } from "../src/tui";
+import { setCachedNativeImage } from "../src/image";
 import type { FarmatodoProduct, Store, City } from "../src/types";
 import { spawnSync } from "child_process";
 import fs from "fs";
@@ -120,6 +122,7 @@ const mockDepartments = [
 ];
 
 async function captureAndSave(setup: Awaited<ReturnType<typeof createTestRenderer>>, filename: string, title: string) {
+  await new Promise((r) => setTimeout(r, 80));
   await setup.renderOnce();
   const spans = setup.captureSpans();
   const tmpJson = path.join("/tmp", `spans_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
@@ -152,6 +155,13 @@ async function main() {
   }
 
   console.log("📸 Generating visual screenshots for Farmatodo TUI...");
+
+  // Pre-cargar imagen de prueba en cubos para los mocks
+  try {
+    const rawPng = await (await fetch("https://lh3.googleusercontent.com/u7U9tmF3IRPmTZfDXgQ6t18K-4vG1zxQTJimRWH8dbUeFA7j5KOwAfRXX3P_P94SiBaYI40rQNABkr8U7jDqx8gvYP3RsqCbKUBrxKwoViu-c7Eo")).arrayBuffer();
+    const img = NativeImage.decode(new Uint8Array(rawPng));
+    setCachedNativeImage("https://example.com/item1.jpg", img);
+  } catch (_) {}
 
   // 1. Vista Principal (Dashboard)
   {
@@ -249,7 +259,7 @@ async function main() {
     setup.renderer.destroy();
   }
 
-  // 6. Vista Modal de Imagen
+  // 6. Vista Modal de Imagen en Cubos
   {
     const setup = await createTestRenderer({ width: 100, height: 26 });
     const app = new FarmatodoTUI(setup.renderer);
@@ -261,10 +271,9 @@ async function main() {
     app.cities = mockCities;
     app.selectedIndex = 0;
     app.showImageView = true;
-    app.imageArt = "[ Fotografía oficial del producto ]\n\n  █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█\n  █  FARMATODO VE  █\n  █  CALOX 500mg   █\n  █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█";
     app.updateView();
 
-    await captureAndSave(setup, "tui_image_modal.png", "Farmatodo TUI — Visor de Fotografía Oficial");
+    await captureAndSave(setup, "tui_image_modal.png", "Farmatodo TUI — Visor de Fotografía en Cubos");
     setup.renderer.destroy();
   }
 

@@ -3,7 +3,50 @@ import { execSync, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 
+import { NativeImage } from "@opentui/core";
+
 const imageCache = new Map<string, string>();
+const nativeImageCache = new Map<string, NativeImage>();
+const pendingFetches = new Set<string>();
+
+export function getCachedNativeImage(url: string): NativeImage | null {
+  return nativeImageCache.get(url) || null;
+}
+
+export function setCachedNativeImage(url: string, img: NativeImage) {
+  nativeImageCache.set(url, img);
+}
+
+export async function preloadNativeImage(
+  url: string,
+  onLoaded?: (img: NativeImage) => void
+): Promise<NativeImage | null> {
+  if (!url) return null;
+  if (nativeImageCache.has(url)) {
+    const cached = nativeImageCache.get(url)!;
+    onLoaded?.(cached);
+    return cached;
+  }
+  if (pendingFetches.has(url)) return null;
+  pendingFetches.add(url);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      pendingFetches.delete(url);
+      return null;
+    }
+    const buf = await res.arrayBuffer();
+    const img = NativeImage.decode(new Uint8Array(buf));
+    nativeImageCache.set(url, img);
+    pendingFetches.delete(url);
+    onLoaded?.(img);
+    return img;
+  } catch (err) {
+    pendingFetches.delete(url);
+    return null;
+  }
+}
 
 /**
  * Envía el comando de Kitty Graphics Protocol para eliminar cualquier imagen flotante del búfer

@@ -14,7 +14,13 @@ import {
   getProductStockInStores,
   getDepartments
 } from "./api";
-import { renderProductImage, openImageInBrowser, clearKittyImages } from "./image";
+import {
+  renderProductImage,
+  openImageInBrowser,
+  clearKittyImages,
+  getCachedNativeImage,
+  preloadNativeImage
+} from "./image";
 import { loadConfig, saveConfig } from "./config";
 import { getGlyphs } from "./glyphs";
 import type { FarmatodoProduct, City, Store } from "./types";
@@ -474,10 +480,14 @@ export class FarmatodoTUI {
     this.updateModal();
 
     try {
+      const cached = getCachedNativeImage(prod.mediaImageUrl);
+      if (!cached) {
+        await preloadNativeImage(prod.mediaImageUrl);
+      }
       const targetWidth = Math.max(28, Math.min(this.renderer.width - 14, 46));
       this.imageArt = await renderProductImage(prod.mediaImageUrl, targetWidth);
     } catch (e) {
-      this.imageArt = "[Error al renderizar imagen]";
+      this.imageArt = "[Error al renderizar imagen en cubos]";
     } finally {
       this.loadingImage = false;
       this.updateModal();
@@ -698,56 +708,106 @@ export class FarmatodoTUI {
 
     const curProd = this.getCurrentProduct();
     if (this.activeTab === "products" && curProd) {
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
+      const detailSplit = new BoxRenderable(this.renderer, {
+        width: "100%",
+        flexGrow: 1,
+        flexDirection: "row",
+        overflow: "hidden"
+      });
+      this.rightDetailBox.add(detailSplit);
+
+      const detailText = new BoxRenderable(this.renderer, {
+        flexGrow: 1,
+        flexDirection: "column",
+        paddingRight: 1,
+        overflow: "hidden"
+      });
+      detailSplit.add(detailText);
+
+      detailText.add(new TextRenderable(this.renderer, {
         content: isRecommended ? `${G.sparkles} [PRODUCTO RECOMENDADO]` : `${G.pill} [FICHA DE MEDICAMENTO]`,
         fg: THEME.blueAccent
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
+      detailText.add(new TextRenderable(this.renderer, {
         content: curProd.mediaDescription,
         fg: THEME.white
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
+      detailText.add(new TextRenderable(this.renderer, {
         content: `${G.tag} Marca: ${curProd.marca || "N/A"}  ${G.bullet}  ID: #${curProd.id}`,
         fg: THEME.grayMuted
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
+      detailText.add(new TextRenderable(this.renderer, {
         content: `${G.dollar} Precio: ${formatBs(curProd.fullPrice)} (${formatUsd(curProd.fullPrice, this.exchangeRate)})`,
         fg: THEME.green
       }));
 
       if (curProd.requirePrescription === "true" || curProd.requirePrescription === true) {
-        this.rightDetailBox.add(new TextRenderable(this.renderer, {
-          content: `${G.warning} [!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO`,
+        detailText.add(new TextRenderable(this.renderer, {
+          content: `${G.warning} [!] REQUIERE RÉCIPE MÉDICO`,
           fg: THEME.rxRed
         }));
       }
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `${G.package} Disponibilidad: ${curProd.stores_with_stock?.length || 0} farmacias activas`,
+      detailText.add(new TextRenderable(this.renderer, {
+        content: `${G.package} Stock: ${curProd.stores_with_stock?.length || 0} farmacias activas`,
         fg: THEME.blueAccent
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
+      detailText.add(new TextRenderable(this.renderer, {
         content: `${G.city} Ciudad: ${this.selectedCity}`,
         fg: THEME.grayMuted
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `${G.camera} [p/i]: Ver fotografía oficial en terminal`,
+      detailText.add(new TextRenderable(this.renderer, {
+        content: `${G.enter} [Enter] Sucursales  ${G.bullet}  ${G.globe} [o] Web`,
         fg: THEME.gold
       }));
 
-      this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `${G.enter} [Enter]: Consultar sucursales con inventario`,
-        fg: THEME.grayLight
-      }));
+      // Recuadro permanente de fotografía convertida a cubos
+      const imageContainer = new BoxRenderable(this.renderer, {
+        width: 18,
+        height: "100%",
+        border: true,
+        borderStyle: "rounded",
+        borderColor: THEME.blueAccent,
+        title: ` ${G.camera} Cubos `,
+        titleColor: THEME.gold,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        overflow: "hidden"
+      });
+      detailSplit.add(imageContainer);
 
-      if (isRecommended) {
-        this.rightDetailBox.add(new TextRenderable(this.renderer, {
-          content: `${G.sparkles} Tip: Presiona [/] para buscar cualquier producto específico.`,
+      if (curProd.mediaImageUrl) {
+        const cached = getCachedNativeImage(curProd.mediaImageUrl);
+        if (cached) {
+          const img = new ImageRenderable(this.renderer, {
+            source: cached,
+            width: 14,
+            height: 8,
+            fit: "contain",
+            protocol: "blocks"
+          });
+          imageContainer.add(img);
+        } else {
+          imageContainer.add(new TextRenderable(this.renderer, {
+            content: "Cargando...",
+            fg: THEME.grayMuted
+          }));
+          preloadNativeImage(curProd.mediaImageUrl, () => {
+            if (this.getCurrentProduct()?.id === curProd.id && this.activeTab === "products") {
+              this.updateContentPanels();
+              this.renderer.requestRender();
+            }
+          });
+        }
+      } else {
+        imageContainer.add(new TextRenderable(this.renderer, {
+          content: "[Sin foto]",
           fg: THEME.grayMuted
         }));
       }
@@ -827,7 +887,7 @@ export class FarmatodoTUI {
 
       if (this.loadingImage) {
         modalBox.add(new TextRenderable(this.renderer, {
-          content: "Descargando imagen oficial...",
+          content: "Descargando imagen y generando cubos...",
           fg: THEME.blueAccent
         }));
       } else {
@@ -837,10 +897,21 @@ export class FarmatodoTUI {
           alignItems: "center",
           justifyContent: "center"
         });
-        imageContentBox.add(new TextRenderable(this.renderer, {
-          content: this.imageArt || "[Sin imagen disponible]",
-          fg: THEME.white
-        }));
+        const cached = prod?.mediaImageUrl ? getCachedNativeImage(prod.mediaImageUrl) : null;
+        if (cached) {
+          imageContentBox.add(new ImageRenderable(this.renderer, {
+            source: cached,
+            width: Math.min(this.renderer.width - 10, 48),
+            height: Math.min(this.renderer.height - 6, 18),
+            fit: "contain",
+            protocol: "blocks"
+          }));
+        } else {
+          imageContentBox.add(new TextRenderable(this.renderer, {
+            content: this.imageArt || "[Sin fotografía disponible]",
+            fg: THEME.white
+          }));
+        }
         modalBox.add(imageContentBox);
       }
 
@@ -924,9 +995,47 @@ export class FarmatodoTUI {
       }));
 
       leftCol.add(new TextRenderable(this.renderer, {
-        content: `${G.camera} [p/i] Ver foto  ${G.bullet}  ${G.globe} [o] Ver en web`,
+        content: `${G.camera} [p/i] Ver grande  ${G.bullet}  ${G.globe} [o] Web`,
         fg: THEME.gold
       }));
+
+      if (p.mediaImageUrl) {
+        const modalImageBox = new BoxRenderable(this.renderer, {
+          width: 22,
+          height: 9,
+          border: true,
+          borderStyle: "rounded",
+          borderColor: THEME.blueAccent,
+          title: ` ${G.camera} Cubos `,
+          titleColor: THEME.gold,
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 1,
+          overflow: "hidden"
+        });
+        const cached = getCachedNativeImage(p.mediaImageUrl);
+        if (cached) {
+          modalImageBox.add(new ImageRenderable(this.renderer, {
+            source: cached,
+            width: 18,
+            height: 7,
+            fit: "contain",
+            protocol: "blocks"
+          }));
+        } else {
+          modalImageBox.add(new TextRenderable(this.renderer, {
+            content: "Cargando cubos...",
+            fg: THEME.grayMuted
+          }));
+          preloadNativeImage(p.mediaImageUrl, () => {
+            if (this.detailModalProduct?.id === p.id) {
+              this.updateModal();
+              this.renderer.requestRender();
+            }
+          });
+        }
+        leftCol.add(modalImageBox);
+      }
 
       const rightCol = new BoxRenderable(this.renderer, {
         width: "50%",
