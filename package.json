@@ -1,0 +1,33 @@
+{
+  "name": "farmatodo-cli",
+  "version": "1.0.0",
+  "description": "CLI y TUI interactiva para Farmatodo Venezuela: buscador de medicamentos y productos, precios en Bs y USD, stock en tiempo real por sucursal, tasa oficial BCV y directorio de farmacias.",
+  "module": "src/index.tsx",
+  "type": "module",
+  "bin": {
+    "farmatodo": "./src/index.tsx"
+  },
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "tui": "bun run src/index.tsx tui",
+    "buscar": "bun run src/index.tsx buscar",
+    "dev": "bun run --watch src/index.tsx",
+    "build": "bun build --compile --minify src/index.tsx --outfile dist/farmatodo"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.17"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.4.5",
+    "@opentui/react": "^0.4.5",
+    "commander": "^15.0.0",
+    "picocolors": "^1.1.1",
+    "react": "^19.2.6",
+    "terminal-image": "^5.0.1"
+  }
+}
