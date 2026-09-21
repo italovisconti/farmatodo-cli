@@ -54,12 +54,35 @@ function formatUsd(bs: number, rate: number): string {
   return `$${usd.toFixed(2)} USD`;
 }
 
+function wrapText(text: string, maxWidth: number): string[] {
+  if (!text) return [];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (!current) {
+      current = word;
+    } else if ((current + " " + word).length <= maxWidth) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 function clearBox(box: BoxRenderable) {
   const children = [...box.getChildren()];
   for (const child of children) {
     box.remove(child);
+    try {
+      (child as any).destroy?.();
+    } catch (_) {}
   }
 }
+
 
 export class FarmatodoTUI {
   renderer: CliRenderer;
@@ -586,7 +609,7 @@ export class FarmatodoTUI {
 
     // Cálculo estricto de altura para ventana deslizante (0% desbordamiento)
     const availableHeight = Math.max(6, this.renderer.height - 11);
-    const itemRowHeight = 2;
+    const itemRowHeight = 3;
     const maxVisible = Math.max(2, Math.floor(availableHeight / itemRowHeight));
 
     const totalItems = this.getCurrentListLength();
@@ -639,8 +662,14 @@ export class FarmatodoTUI {
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
-          this.leftListBox.add(titleTxt);
-          this.leftListBox.add(subtitleTxt);
+          const itemBox = new BoxRenderable(this.renderer, {
+            flexDirection: "column",
+            marginBottom: 1,
+            overflow: "hidden"
+          });
+          itemBox.add(titleTxt);
+          itemBox.add(subtitleTxt);
+          this.leftListBox.add(itemBox);
         });
       }
     } else if (this.activeTab === "stores") {
@@ -667,8 +696,14 @@ export class FarmatodoTUI {
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
-          this.leftListBox.add(titleTxt);
-          this.leftListBox.add(subtitleTxt);
+          const storeBox = new BoxRenderable(this.renderer, {
+            flexDirection: "column",
+            marginBottom: 1,
+            overflow: "hidden"
+          });
+          storeBox.add(titleTxt);
+          storeBox.add(subtitleTxt);
+          this.leftListBox.add(storeBox);
         });
       }
     } else if (this.activeTab === "departments") {
@@ -708,34 +743,30 @@ export class FarmatodoTUI {
 
     const curProd = this.getCurrentProduct();
     if (this.activeTab === "products" && curProd) {
-      const detailSplit = new BoxRenderable(this.renderer, {
-        width: "100%",
-        flexGrow: 1,
-        flexDirection: "row",
-        overflow: "hidden"
-      });
-      this.rightDetailBox.add(detailSplit);
-
+      // 1. Ficha de detalles del producto
       const detailText = new BoxRenderable(this.renderer, {
-        flexGrow: 1,
         flexDirection: "column",
-        paddingRight: 1,
-        overflow: "hidden"
+        width: "100%",
+        flexShrink: 0
       });
-      detailSplit.add(detailText);
+      this.rightDetailBox.add(detailText);
 
       detailText.add(new TextRenderable(this.renderer, {
         content: isRecommended ? `${G.sparkles} [PRODUCTO RECOMENDADO]` : `${G.pill} [FICHA DE MEDICAMENTO]`,
         fg: THEME.blueAccent
       }));
 
-      detailText.add(new TextRenderable(this.renderer, {
-        content: curProd.mediaDescription,
-        fg: THEME.white
-      }));
+      const descLines = wrapText(curProd.mediaDescription || "", 44);
+      for (const line of descLines.slice(0, 2)) {
+        detailText.add(new TextRenderable(this.renderer, {
+          content: line,
+          fg: THEME.white
+        }));
+      }
+
 
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.tag} Marca: ${curProd.marca || "N/A"}  ${G.bullet}  ID: #${curProd.id}`,
+        content: `${G.tag} Marca: ${(curProd.marca || "N/A").slice(0, 20)}  ${G.bullet}  ID: #${curProd.id}`,
         fg: THEME.grayMuted
       }));
 
@@ -746,19 +777,14 @@ export class FarmatodoTUI {
 
       if (curProd.requirePrescription === "true" || curProd.requirePrescription === true) {
         detailText.add(new TextRenderable(this.renderer, {
-          content: `${G.warning} [!] REQUIERE RÉCIPE MÉDICO`,
+          content: `${G.warning} [!] Requiere récipe obligatorio`,
           fg: THEME.rxRed
         }));
       }
 
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.package} Stock: ${curProd.stores_with_stock?.length || 0} farmacias activas`,
+        content: `${G.check} ${curProd.stores_with_stock?.length || 0} farmacias con stock en ${this.selectedCity}`,
         fg: THEME.blueAccent
-      }));
-
-      detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.city} Ciudad: ${this.selectedCity}`,
-        fg: THEME.grayMuted
       }));
 
       detailText.add(new TextRenderable(this.renderer, {
@@ -766,36 +792,37 @@ export class FarmatodoTUI {
         fg: THEME.gold
       }));
 
-      // Recuadro permanente de fotografía convertida a cubos
+      // 2. Tarjeta permanente de imagen ubicada debajo de los detalles
       const imageContainer = new BoxRenderable(this.renderer, {
-        width: 18,
-        height: "100%",
+        height: 8,
+        width: "100%",
         border: true,
         borderStyle: "rounded",
         borderColor: THEME.blueAccent,
-        title: ` ${G.camera} Cubos `,
+        title: ` ${G.camera} Imagen `,
         titleColor: THEME.gold,
         alignItems: "center",
         justifyContent: "center",
+        marginTop: 1,
         flexShrink: 0,
         overflow: "hidden"
       });
-      detailSplit.add(imageContainer);
+      this.rightDetailBox.add(imageContainer);
 
       if (curProd.mediaImageUrl) {
         const cached = getCachedNativeImage(curProd.mediaImageUrl);
         if (cached) {
           const img = new ImageRenderable(this.renderer, {
             source: cached,
-            width: 14,
-            height: 8,
+            width: 22,
+            height: 6,
             fit: "contain",
             protocol: "blocks"
           });
           imageContainer.add(img);
         } else {
           imageContainer.add(new TextRenderable(this.renderer, {
-            content: "Cargando...",
+            content: ` ${G.camera} Cargando imagen...`,
             fg: THEME.grayMuted
           }));
           preloadNativeImage(curProd.mediaImageUrl, () => {
@@ -807,7 +834,7 @@ export class FarmatodoTUI {
         }
       } else {
         imageContainer.add(new TextRenderable(this.renderer, {
-          content: "[Sin foto]",
+          content: ` ${G.camera} [Sin imagen disponible]`,
           fg: THEME.grayMuted
         }));
       }
@@ -879,7 +906,7 @@ export class FarmatodoTUI {
         border: true,
         borderStyle: "rounded",
         borderColor: THEME.blueAccent,
-        title: ` ${G.camera} [FOTO] ${prod?.mediaDescription?.toUpperCase() || ""} `,
+        title: ` ${G.camera} [FOTOGRAFÍA OFICIAL] ${prod?.mediaDescription?.toUpperCase() || ""} `,
         titleColor: THEME.gold,
         paddingX: 1,
         flexDirection: "column"
@@ -887,7 +914,7 @@ export class FarmatodoTUI {
 
       if (this.loadingImage) {
         modalBox.add(new TextRenderable(this.renderer, {
-          content: "Descargando imagen y generando cubos...",
+          content: "Descargando fotografía oficial...",
           fg: THEME.blueAccent
         }));
       } else {
@@ -1006,7 +1033,7 @@ export class FarmatodoTUI {
           border: true,
           borderStyle: "rounded",
           borderColor: THEME.blueAccent,
-          title: ` ${G.camera} Cubos `,
+          title: ` ${G.camera} Imagen `,
           titleColor: THEME.gold,
           alignItems: "center",
           justifyContent: "center",
@@ -1024,7 +1051,7 @@ export class FarmatodoTUI {
           }));
         } else {
           modalImageBox.add(new TextRenderable(this.renderer, {
-            content: "Cargando cubos...",
+            content: ` ${G.camera} Cargando imagen...`,
             fg: THEME.grayMuted
           }));
           preloadNativeImage(p.mediaImageUrl, () => {

@@ -273,7 +273,7 @@ async function main() {
     app.showImageView = true;
     app.updateView();
 
-    await captureAndSave(setup, "tui_image_modal.png", "Farmatodo TUI — Visor de Fotografía en Cubos");
+    await captureAndSave(setup, "tui_image_modal.png", "Farmatodo TUI — Visor de Fotografía Oficial");
     setup.renderer.destroy();
   }
 

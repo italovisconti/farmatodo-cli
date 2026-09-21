@@ -96,10 +96,10 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).toContain("[3] Deptos");
     expect(frame).toContain("[4] Ciudades");
 
-    // 5. Productos listados y panel de detalle con tarjeta de cubos
+    // 5. Productos listados y panel de detalle con tarjeta de imagen
     expect(frame).toContain("Acetaminofén 500 mg");
     expect(frame).toContain("Bs. 369,00");
-    expect(frame).toContain("Cubos");
+    expect(frame).toContain("Imagen");
 
     // 6. Barra de comandos inferior
     expect(frame).toContain("[Tab/1-4] Vistas");
@@ -151,7 +151,7 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).toContain("[PRECIO Y TASA OFICIAL]");
     expect(frame).toContain("Acetaminofén 500 mg Calox");
     expect(frame).toContain("SUCURSALES EN CCS");
-    expect(frame).toContain("Cubos");
+    expect(frame).toContain("Imagen");
 
     // Cerrar modal enviando evento escape
     testSetup.renderer.keyInput.emit("keypress", { name: "escape" });
