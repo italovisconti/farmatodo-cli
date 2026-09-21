@@ -1,6 +1,32 @@
-node_modules
-dist
+# Dependencias
+node_modules/
+
+# Builds y binarios compilados
+dist/
+
+# Archivos de entorno y configuración local
 .env
 .env.local
+.env.*.local
+.farmatodo-cli.json
+
+# Logs y depuración
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema operativo
 .DS_Store
+Thumbs.db
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporales
+/tmp/
+*.tmp
