@@ -12,7 +12,7 @@ import {
   fetchOffers,
   fetchPromotionalBanners
 } from "./api";
-import { renderProductImage, openImageInBrowser } from "./image";
+import { renderProductImage, openImageInBrowser, getImageCacheStats, clearDiskCache } from "./image";
 import { getGlyphs } from "./glyphs";
 import { startCliSpinner } from "./spinner";
 import { loadConfig, saveConfig } from "./config";
@@ -614,6 +614,29 @@ export async function runCLI(argv: string[]) {
     .action((codigo) => {
       const updated = saveConfig({ defaultCity: codigo.toUpperCase() });
       console.log(pc.green(`\n${NF.check} Ciudad predeterminada actualizada a: ${pc.bold(updated.defaultCity)}\n`));
+    });
+
+  // COMANDO: CACHE
+  program
+    .command("cache")
+    .description("Gestionar la caché local persistente de imágenes")
+    .option("-l, --limpiar", "Eliminar todas las imágenes almacenadas en el disco")
+    .option("--clean", "Alias de --limpiar")
+    .action((opts) => {
+      if (opts.limpiar || opts.clean) {
+        const deleted = clearDiskCache();
+        console.log(pc.green(`\n${NF.check} Caché limpiada con éxito: ${pc.bold(deleted.toString())} imágenes eliminadas del disco.\n`));
+        return;
+      }
+      const stats = getImageCacheStats();
+      console.log("");
+      console.log(pc.bold(pc.blue(`${NF.cross} Caché de Imágenes Farmatodo`)));
+      console.log(pc.gray("―".repeat(60)));
+      console.log(` Directorio:        ${pc.cyan(stats.dir)}`);
+      console.log(` Imágenes en caché: ${pc.bold(pc.yellow(stats.count.toString()))}`);
+      console.log(` Espacio ocupado:   ${pc.bold(pc.green(stats.sizeFormatted))}`);
+      console.log(pc.gray("\nPara vaciar la caché ejecuta:"));
+      console.log(pc.cyan("  farmatodo cache --limpiar\n"));
     });
 
   await program.parseAsync(argv);

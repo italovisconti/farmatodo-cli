@@ -21,7 +21,8 @@ import {
   openImageInBrowser,
   clearKittyImages,
   getCachedNativeImage,
-  preloadNativeImage
+  preloadNativeImage,
+  preloadBatch
 } from "./image";
 import { loadConfig, saveConfig } from "./config";
 import { getGlyphs } from "./glyphs";
@@ -443,6 +444,10 @@ export class FarmatodoTUI {
       this.offers = fetchedOffers.hits;
       this.stores = fetchedStores;
       this.departments = fetchedDepts;
+
+      // Precargar en segundo plano imágenes al iniciar
+      preloadBatch(this.products.map((p) => p.mediaImageUrl));
+      preloadBatch(this.offers.map((p) => p.mediaImageUrl));
     } catch (err) {
       console.error("Error al cargar datos en TUI:", err);
     } finally {
@@ -464,6 +469,7 @@ export class FarmatodoTUI {
       });
       this.products = res.hits;
       this.selectedIndex = 0;
+      preloadBatch(this.products.map((p) => p.mediaImageUrl));
     } catch (e) {
       console.error("Error al buscar:", e);
     } finally {

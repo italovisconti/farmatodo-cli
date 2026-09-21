@@ -91,10 +91,11 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).not.toContain("Buscador0de");
 
     // 4. Pestañas visibles en una sola fila
-    expect(frame).toContain("[1] Destacados");
-    expect(frame).toContain("[2] Farmacias");
-    expect(frame).toContain("[3] Deptos");
-    expect(frame).toContain("[4] Ciudades");
+    expect(frame).toContain("[1] Catálogo");
+    expect(frame).toContain("[2] Ofertas");
+    expect(frame).toContain("[3] Farmacias");
+    expect(frame).toContain("[4] Deptos");
+    expect(frame).toContain("[5] Ciudades");
 
     // 5. Productos listados y panel de detalle con tarjeta de imagen
     expect(frame).toContain("Acetaminofén 500 mg");
@@ -102,11 +103,11 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).toContain("Imagen");
 
     // 6. Barra de comandos inferior
-    expect(frame).toContain("[Tab/1-4] Vistas");
+    expect(frame).toContain("[Tab/1-5] Vistas");
   });
 
   test("Tab switching updates content cleanly", async () => {
-    testSetup = await createTestRenderer({ width: 100, height: 26 });
+    testSetup = await createTestRenderer({ width: 110, height: 26 });
     const app = new FarmatodoTUI(testSetup.renderer);
 
     app.loading = false;
@@ -114,8 +115,8 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     app.cities = mockCities;
     app.updateView();
 
-    // Cambiar a pestaña 2 (Farmacias)
-    testSetup.mockInput.pressKey("2");
+    // Cambiar a pestaña 3 (Farmacias)
+    testSetup.mockInput.pressKey("3");
     await testSetup.renderOnce();
 
     let frame = testSetup.captureCharFrame();
@@ -123,8 +124,8 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).toContain("TEPUY");
     expect(frame).toContain("Las Mercedes");
 
-    // Cambiar a pestaña 4 (Ciudades)
-    testSetup.mockInput.pressKey("4");
+    // Cambiar a pestaña 5 (Ciudades)
+    testSetup.mockInput.pressKey("5");
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
@@ -134,7 +135,7 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
   });
 
   test("Opens product detail modal with stock in local stores", async () => {
-    testSetup = await createTestRenderer({ width: 100, height: 26 });
+    testSetup = await createTestRenderer({ width: 110, height: 26 });
     const app = new FarmatodoTUI(testSetup.renderer);
 
     app.loading = false;
@@ -158,11 +159,11 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     await testSetup.renderOnce();
 
     const closedFrame = testSetup.captureCharFrame();
-    expect(closedFrame).toContain("DESTACADOS Y RECOMENDADOS");
+    expect(closedFrame).toContain("CATÁLOGO");
   });
 
   test("Search mode accepts input and displays search state", async () => {
-    testSetup = await createTestRenderer({ width: 100, height: 26 });
+    testSetup = await createTestRenderer({ width: 120, height: 26 });
     const app = new FarmatodoTUI(testSetup.renderer);
 
     app.loading = false;
@@ -174,20 +175,20 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     await testSetup.renderOnce();
 
     let frame = testSetup.captureCharFrame();
-    expect(frame).toContain("[_] (Enter/Esc)");
+    expect(frame).toContain("[_]");
 
     // Escribir texto con typeText
     testSetup.mockInput.typeText("flips");
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).toContain("[flips_] (Enter/Esc)");
+    expect(frame).toContain("[flips_]");
 
     // Cancelar enviando escape
     testSetup.renderer.keyInput.emit("keypress", { name: "escape" });
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).not.toContain("[flips_] (Enter/Esc)");
+    expect(frame).not.toContain("[flips_]");
   });
 });

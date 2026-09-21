@@ -94,6 +94,10 @@ farmatodo stock 111694893 -c CCS
 
 # Listar farmacias en una ciudad
 farmatodo farmacias -c CCS
+
+# Administrar cache local persistente de imagenes
+farmatodo cache
+farmatodo cache --limpiar
 ```
 
 ---
