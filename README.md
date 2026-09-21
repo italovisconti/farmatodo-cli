@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="static/logo-farmatodo-cli.png" alt="Farmatodo CLI" width="420" />
+</p>
+
 # Farmatodo CLI & TUI 💊🇻🇪
 
 Interfaz de terminal interactiva (TUI) y cliente CLI para consultar productos, precios en Bolívares y Dólares con la tasa oficial BCV, disponibilidad por sucursales e imágenes de **Farmatodo Venezuela**.
