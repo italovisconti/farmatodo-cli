@@ -12,7 +12,9 @@ import {
   fetchCities,
   fetchNearbyStores,
   getProductStockInStores,
-  getDepartments
+  getDepartments,
+  getProductOfferInfo,
+  fetchOffers
 } from "./api";
 import {
   renderProductImage,
@@ -92,9 +94,10 @@ export class FarmatodoTUI {
   loading = true;
   exchangeRate = 850.0;
   selectedCity = this.config.defaultCity || "CCS";
-  activeTab: "products" | "stores" | "departments" | "cities" = "products";
+  activeTab: "products" | "offers" | "stores" | "departments" | "cities" = "products";
 
   products: FarmatodoProduct[] = [];
+  offers: FarmatodoProduct[] = [];
   stores: Store[] = [];
   cities: City[] = [];
   departments: { name: string; count: number }[] = [];
@@ -224,7 +227,7 @@ export class FarmatodoTUI {
     });
 
     this.footerText = new TextRenderable(renderer, {
-      content: `[Tab/1-4] Vistas  •  ${G.search} [/] Buscar  •  ▲▼ Navegar  •  ${G.enter} Detalle  •  ${G.camera} [p/i] Foto  •  ${G.city} [c] Ciudad  •  ${G.exit} [q] Salir`,
+      content: `[Tab/1-5] Vistas  •  ${G.search} [/] Buscar  •  ▲▼ Navegar  •  ${G.enter} Detalle  •  ${G.camera} [p/i] Foto  •  ${G.city} [c] Ciudad  •  ${G.exit} [q] Salir`,
       fg: THEME.white
     });
 
@@ -335,7 +338,8 @@ export class FarmatodoTUI {
       }
 
       if (event.name === "tab") {
-        if (this.activeTab === "products") this.activeTab = "stores";
+        if (this.activeTab === "products") this.activeTab = "offers";
+        else if (this.activeTab === "offers") this.activeTab = "stores";
         else if (this.activeTab === "stores") this.activeTab = "departments";
         else if (this.activeTab === "departments") this.activeTab = "cities";
         else this.activeTab = "products";
@@ -345,9 +349,10 @@ export class FarmatodoTUI {
       }
 
       if (event.name === "1") { this.activeTab = "products"; this.selectedIndex = 0; this.updateView(); return; }
-      if (event.name === "2") { this.activeTab = "stores"; this.selectedIndex = 0; this.updateView(); return; }
-      if (event.name === "3") { this.activeTab = "departments"; this.selectedIndex = 0; this.updateView(); return; }
-      if (event.name === "4" || event.name === "c") { this.activeTab = "cities"; this.selectedIndex = 0; this.updateView(); return; }
+      if (event.name === "2") { this.activeTab = "offers"; this.selectedIndex = 0; this.updateView(); return; }
+      if (event.name === "3") { this.activeTab = "stores"; this.selectedIndex = 0; this.updateView(); return; }
+      if (event.name === "4") { this.activeTab = "departments"; this.selectedIndex = 0; this.updateView(); return; }
+      if (event.name === "5" || event.name === "c") { this.activeTab = "cities"; this.selectedIndex = 0; this.updateView(); return; }
 
       if (event.name === "/" || event.name === "s") {
         this.isSearching = true;
@@ -386,6 +391,8 @@ export class FarmatodoTUI {
       if (event.name === "return" || event.name === "enter") {
         if (this.activeTab === "products" && this.products[this.selectedIndex]) {
           await this.openDetailModal(this.products[this.selectedIndex]!);
+        } else if (this.activeTab === "offers" && this.offers[this.selectedIndex]) {
+          await this.openDetailModal(this.offers[this.selectedIndex]!);
         } else if (this.activeTab === "departments" && this.departments[this.selectedIndex]) {
           const dept = this.departments[this.selectedIndex]!.name;
           this.selectedDepartment = dept;
@@ -401,6 +408,8 @@ export class FarmatodoTUI {
   getCurrentListLength(): number {
     return this.activeTab === "products"
       ? this.products.length
+      : this.activeTab === "offers"
+      ? this.offers.length
       : this.activeTab === "stores"
       ? this.stores.length
       : this.activeTab === "departments"
@@ -409,7 +418,9 @@ export class FarmatodoTUI {
   }
 
   getCurrentProduct(): FarmatodoProduct | null {
-    return this.activeTab === "products" ? this.products[this.selectedIndex] || null : null;
+    if (this.activeTab === "products") return this.products[this.selectedIndex] || null;
+    if (this.activeTab === "offers") return this.offers[this.selectedIndex] || null;
+    return null;
   }
 
   async loadInitialData() {
@@ -417,10 +428,11 @@ export class FarmatodoTUI {
     this.updateView();
 
     try {
-      const [rate, fetchedCities, initialSearch, fetchedStores, fetchedDepts] = await Promise.all([
+      const [rate, fetchedCities, initialSearch, fetchedOffers, fetchedStores, fetchedDepts] = await Promise.all([
         getExchangeRate(),
         fetchCities(),
         searchProducts({ query: "", hitsPerPage: 30 }),
+        fetchOffers({ cityId: this.selectedCity, hitsPerPage: 40 }),
         fetchNearbyStores(this.selectedCity),
         getDepartments()
       ]);
@@ -428,6 +440,7 @@ export class FarmatodoTUI {
       this.exchangeRate = rate;
       this.cities = fetchedCities;
       this.products = initialSearch.hits;
+      this.offers = fetchedOffers.hits;
       this.stores = fetchedStores;
       this.departments = fetchedDepts;
     } catch (err) {
@@ -536,10 +549,11 @@ export class FarmatodoTUI {
 
     // Pill buttons de pestañas con iconos enriquecidos
     const tabs = [
-      { id: "products", label: this.searchQuery ? `${G.search} [1] Búsqueda` : `${G.sparkles} [1] Destacados` },
-      { id: "stores", label: `${G.hospital} [2] Farmacias` },
-      { id: "departments", label: `${G.tag} [3] Deptos` },
-      { id: "cities", label: `${G.city} [4] Ciudades` }
+      { id: "products", label: this.searchQuery ? `${G.search} [1] Búsqueda` : `${G.sparkles} [1] Catálogo` },
+      { id: "offers", label: `${G.tag} [2] Ofertas` },
+      { id: "stores", label: `${G.hospital} [3] Farmacias` },
+      { id: "departments", label: `📁 [4] Deptos` },
+      { id: "cities", label: `${G.city} [5] Ciudades` }
     ];
 
     const leftTabGroup = new BoxRenderable(this.renderer, {
@@ -622,7 +636,9 @@ export class FarmatodoTUI {
     const isRecommended = !this.searchQuery && !this.selectedDepartment;
     let listTitle = "";
     if (this.activeTab === "products") {
-      listTitle = isRecommended ? `${G.sparkles} DESTACADOS Y RECOMENDADOS` : `${G.search} RESULTADOS (${this.products.length})`;
+      listTitle = isRecommended ? `${G.sparkles} CATÁLOGO (${this.products.length})` : `${G.search} RESULTADOS (${this.products.length})`;
+    } else if (this.activeTab === "offers") {
+      listTitle = `🏷️ MUNDO OFERTAS (${this.offers.length})`;
     } else if (this.activeTab === "stores") {
       listTitle = `${G.hospital} FARMACIAS EN ${this.selectedCity} (${this.stores.length})`;
     } else if (this.activeTab === "departments") {
@@ -645,20 +661,67 @@ export class FarmatodoTUI {
         visibleSlice.forEach((p, relIdx) => {
           const absIdx = scrollOffset + relIdx;
           const isSel = absIdx === this.selectedIndex;
-          const priceBs = formatBs(p.fullPrice);
-          const priceUsd = formatUsd(p.fullPrice, this.exchangeRate);
+          const offerInfo = getProductOfferInfo(p, this.selectedCity, this.exchangeRate);
+          const priceBs = formatBs(offerInfo.hasOffer ? offerInfo.offerPrice : p.fullPrice);
+          const priceUsd = formatUsd(offerInfo.hasOffer ? offerInfo.offerPrice : p.fullPrice, this.exchangeRate);
           const stockCount = p.stores_with_stock?.length || 0;
           const stockText = stockCount > 0 ? `${G.check} ${stockCount} disp.` : `${G.crossMark} Agotado`;
           const rxBadge = (p.requirePrescription === "true" || p.requirePrescription === true) ? `${G.warning} ` : "";
+          const offerBadge = offerInfo.hasOffer ? `[-${offerInfo.discountText}] ` : "";
           const pointer = isSel ? `${G.pointer} ` : "  ";
 
           const titleTxt = new TextRenderable(this.renderer, {
-            content: `${pointer}${rxBadge}${p.mediaDescription.slice(0, 36)}`,
-            fg: isSel ? THEME.gold : THEME.white
+            content: `${pointer}${rxBadge}${offerBadge}${p.mediaDescription.slice(0, 34)}`,
+            fg: isSel ? THEME.gold : offerInfo.hasOffer ? THEME.green : THEME.white
           });
 
           const subtitleTxt = new TextRenderable(this.renderer, {
             content: `    ${G.dollar} ${priceBs} (${priceUsd}) ${G.bullet} ${stockText}`,
+            fg: isSel ? THEME.blueAccent : THEME.grayMuted
+          });
+
+          const itemBox = new BoxRenderable(this.renderer, {
+            flexDirection: "column",
+            marginBottom: 1,
+            overflow: "hidden"
+          });
+          itemBox.add(titleTxt);
+          itemBox.add(subtitleTxt);
+          this.leftListBox.add(itemBox);
+        });
+      }
+    } else if (this.activeTab === "offers") {
+      if (this.offers.length === 0) {
+        this.leftListBox.add(new TextRenderable(this.renderer, {
+          content: `${G.warning} No hay ofertas cargadas en este momento.`,
+          fg: THEME.amber
+        }));
+      } else {
+        const visibleSlice = this.offers.slice(scrollOffset, scrollOffset + maxVisible);
+        visibleSlice.forEach((p, relIdx) => {
+          const absIdx = scrollOffset + relIdx;
+          const isSel = absIdx === this.selectedIndex;
+          const offerInfo = getProductOfferInfo(p, this.selectedCity, this.exchangeRate);
+          const currentPrice = offerInfo.hasOffer ? offerInfo.offerPrice : p.fullPrice;
+          const priceBs = formatBs(currentPrice);
+          const priceUsd = formatUsd(currentPrice, this.exchangeRate);
+          const stockCount = p.stores_with_stock?.length || 0;
+          const stockText = stockCount > 0 ? `${G.check} ${stockCount} disp.` : `${G.crossMark} Agotado`;
+          const rxBadge = (p.requirePrescription === "true" || p.requirePrescription === true) ? `${G.warning} ` : "";
+          const tag = offerInfo.hasOffer ? `[-${offerInfo.discountText}] ` : `[OFERTA] `;
+          const pointer = isSel ? `${G.pointer} ` : "  ";
+
+          const titleTxt = new TextRenderable(this.renderer, {
+            content: `${pointer}${rxBadge}${tag}${p.mediaDescription.slice(0, 32)}`,
+            fg: isSel ? THEME.gold : THEME.green
+          });
+
+          const subtitleContent = offerInfo.hasOffer
+            ? `    ${G.dollar} ${priceBs} (${priceUsd}) ${G.bullet} Antes: ${formatBs(offerInfo.originalPrice)}`
+            : `    ${G.dollar} ${priceBs} (${priceUsd}) ${G.bullet} ${stockText}`;
+
+          const subtitleTxt = new TextRenderable(this.renderer, {
+            content: subtitleContent,
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
@@ -742,7 +805,7 @@ export class FarmatodoTUI {
     this.rightDetailBox.title = ` ${G.star} DETALLE `;
 
     const curProd = this.getCurrentProduct();
-    if (this.activeTab === "products" && curProd) {
+    if ((this.activeTab === "products" || this.activeTab === "offers") && curProd) {
       const panelWidth = Math.max(28, Math.floor(this.renderer.width * 0.5) - 6);
 
       // 1. Ficha de detalles del producto
@@ -753,20 +816,23 @@ export class FarmatodoTUI {
       });
       this.rightDetailBox.add(detailText);
 
+      // Evaluar si tiene oferta
+      const offerInfo = getProductOfferInfo(curProd, this.selectedCity, this.exchangeRate);
+
       // Badges superiores de clasificación
       const deptoName = curProd.departments?.[0] || "Salud y Medicamentos";
       const isRx = curProd.requirePrescription === "true" || curProd.requirePrescription === true;
       const stockCount = curProd.stores_with_stock?.length || 0;
 
       const headerBadges = [
-        isRecommended ? `${G.sparkles} DESTACADO` : `${G.pill} ${deptoName.slice(0, 18)}`,
+        offerInfo.hasOffer ? `🏷️ -${offerInfo.discountText} DCTO` : isRecommended ? `${G.sparkles} DESTACADO` : `${G.pill} ${deptoName.slice(0, 18)}`,
         isRx ? `${G.warning} RÉCIPE` : null,
         stockCount > 0 ? `${G.check} EN STOCK (${stockCount})` : `✗ AGOTADO`
       ].filter(Boolean).join(`  ${G.bullet}  `);
 
       detailText.add(new TextRenderable(this.renderer, {
         content: headerBadges,
-        fg: isRx ? THEME.rxRed : THEME.blueAccent
+        fg: offerInfo.hasOffer ? THEME.gold : isRx ? THEME.rxRed : THEME.blueAccent
       }));
 
       // Nombre / Presentación del producto con wrapping seguro
@@ -791,13 +857,29 @@ export class FarmatodoTUI {
         fg: THEME.grayMuted
       }));
 
-      // Precios en Bolívares y Dólares
-      const priceBs = formatBs(curProd.fullPrice);
-      const priceUsd = formatUsd(curProd.fullPrice, this.exchangeRate);
-      detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.dollar} Precio: ${priceBs} (${priceUsd})`,
-        fg: THEME.green
-      }));
+      // Precios en Bolívares y Dólares (con oferta destacada si aplica)
+      if (offerInfo.hasOffer) {
+        const offerBs = formatBs(offerInfo.offerPrice);
+        const offerUsd = formatUsd(offerInfo.offerPrice, this.exchangeRate);
+        const origBs = formatBs(offerInfo.originalPrice);
+        const savingsUsd = formatUsd(offerInfo.savingsBs, this.exchangeRate);
+
+        detailText.add(new TextRenderable(this.renderer, {
+          content: `${G.dollar} Oferta: ${offerBs} (${offerUsd})`,
+          fg: THEME.green
+        }));
+        detailText.add(new TextRenderable(this.renderer, {
+          content: `   ↳ Antes: ${origBs}  ${G.bullet}  Ahorro: ${formatBs(offerInfo.savingsBs)} (${savingsUsd})`,
+          fg: THEME.gold
+        }));
+      } else {
+        const priceBs = formatBs(curProd.fullPrice);
+        const priceUsd = formatUsd(curProd.fullPrice, this.exchangeRate);
+        detailText.add(new TextRenderable(this.renderer, {
+          content: `${G.dollar} Precio: ${priceBs} (${priceUsd})`,
+          fg: THEME.green
+        }));
+      }
 
       // Aviso de récipe obligatorio si aplica
       if (isRx) {
@@ -1016,20 +1098,39 @@ export class FarmatodoTUI {
         paddingRight: 1
       });
 
-      leftCol.add(new TextRenderable(this.renderer, {
-        content: `${G.dollar} [PRECIO Y TASA OFICIAL]`,
-        fg: THEME.blueAccent
-      }));
+      const offerInfo = getProductOfferInfo(p, this.selectedCity, this.exchangeRate);
 
-      leftCol.add(new TextRenderable(this.renderer, {
-        content: formatBs(p.fullPrice),
-        fg: THEME.green
-      }));
+      if (offerInfo.hasOffer) {
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: `🏷️ ¡OFERTA: -${offerInfo.discountText} DCTO!`,
+          fg: THEME.gold
+        }));
 
-      leftCol.add(new TextRenderable(this.renderer, {
-        content: formatUsd(p.fullPrice, this.exchangeRate),
-        fg: THEME.gold
-      }));
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: `${formatBs(offerInfo.offerPrice)}  (${formatUsd(offerInfo.offerPrice, this.exchangeRate)})`,
+          fg: THEME.green
+        }));
+
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: `Antes: ${formatBs(offerInfo.originalPrice)} • Ahorras: ${formatBs(offerInfo.savingsBs)}`,
+          fg: THEME.amber
+        }));
+      } else {
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: `${G.dollar} [PRECIO Y TASA OFICIAL]`,
+          fg: THEME.blueAccent
+        }));
+
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: formatBs(p.fullPrice),
+          fg: THEME.green
+        }));
+
+        leftCol.add(new TextRenderable(this.renderer, {
+          content: formatUsd(p.fullPrice, this.exchangeRate),
+          fg: THEME.gold
+        }));
+      }
 
       leftCol.add(new TextRenderable(this.renderer, {
         content: `${G.lightning} Tasa oficial BCV: Bs. ${this.exchangeRate.toFixed(2)} / $`,

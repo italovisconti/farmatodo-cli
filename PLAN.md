@@ -88,7 +88,17 @@ A partir del análisis del bundle JavaScript de Farmatodo (`main-es2018.*.js`), 
       }
     ]
   }
-  ```
+### E. Promociones, Descuentos y Campañas (Mundo Ofertas)
+Descubiertos e interceptados en vivo con `agent-browser` (skills `core` y `derive-client`):
+- **Catálogo de Ofertas Globales (Algolia):**
+  - **Filtro:** `outofstore:false AND offerStartDate <= <TIMESTAMP> AND offerEndDate >= <TIMESTAMP>`
+  - **Estructura del Hit:** `offerPriceByCity`: `[{ "cityCode": "CCS", "offerPrice": 2796.8, "offerText": "20%" }]`, `stores_with_offer`.
+- **Campañas / Grupos de Oferta Destacados:**
+  - **Endpoint:** `POST https://api-transactional.farmatodo.com/VE/home/offers/suggest-affinity?key=AIzaSyAidR6Tt0K60gACR78aWThMQb7L5u6Wpag`
+  - **Filtro en Algolia:** `id_suggested:'<ID>'` (ej. `9837` para Higiene del Hogar, `9830` para Dulces y Snacks).
+- **Motor de Mejor Oferta / Best Deal:**
+  - **Endpoint:** `POST https://api-transactional.farmatodo.com/calculate-best-deal/r/VE/v1/calculate-best-deal`
+  - Valida reglas de cupones, delivery, primera compra y descuentos por cesta.
 
 ---
 

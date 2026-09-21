@@ -37,7 +37,7 @@ bun run build
 
 | Tecla | Acción |
 |---|---|
-| `[Tab]` / `[1-4]` | Alternar vistas: Destacados, Farmacias, Departamentos, Ciudades |
+| `[Tab]` / `[1-5]` | Alternar vistas: Catálogo, Ofertas, Farmacias, Departamentos, Ciudades |
 | `[↑]` / `[↓]` | Desplazarse por la lista |
 | `[/]` | Búsqueda interactiva de productos |
 | `[Enter]` | Ver detalle completo del producto y sucursales con stock |
@@ -53,14 +53,24 @@ bun run build
 Para consultar directamente desde la consola o en scripts:
 
 ```bash
-# Buscar productos
-farmatodo buscar "acetaminofen"
+# Consultar todas las promociones y ofertas con descuento activo
+farmatodo ofertas
+
+# Ver las campañas y grupos destacados de ofertas (Higiene, Dulces, etc.)
+farmatodo ofertas --campanas
+
+# Filtrar ofertas por grupo promocional específico
+farmatodo ofertas -g 9837
+
+# Buscar productos en general (o filtrar solo los que tienen descuento)
+farmatodo buscar "galleta"
+farmatodo buscar "rosal" --ofertas
 
 # Consultar la tasa oficial BCV del día
 farmatodo tasa
 
 # Consultar disponibilidad de un producto por farmacias
-farmatodo stock 101 -c CCS
+farmatodo stock 111694893 -c CCS
 
 # Listar farmacias en una ciudad
 farmatodo farmacias -c CCS

@@ -3,9 +3,34 @@ export interface FullPriceByCity {
   fullPrice: number;
 }
 
+export interface OfferPriceByCity {
+  cityCode: string;
+  offerPrice: number;
+  offerText: string;
+}
+
 export interface CustomLabelByCity {
   cityCode: string;
   customLabel: string;
+}
+
+export interface PromotionCampaign {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  url?: string;
+  startDate?: string | number;
+  endDate?: string | number;
+}
+
+export interface ProductOfferInfo {
+  hasOffer: boolean;
+  originalPrice: number;
+  offerPrice: number;
+  discountText: string;
+  discountPercent: number;
+  savingsBs: number;
+  savingsUsd: number;
 }
 
 export interface FarmatodoProduct {
@@ -21,6 +46,12 @@ export interface FarmatodoProduct {
   fullPriceByCity: FullPriceByCity[];
   offerPrice: number;
   offerText?: string;
+  offerDescription?: string;
+  offerPriceByCity?: OfferPriceByCity[];
+  offerStartDate?: number;
+  offerEndDate?: number;
+  stores_with_offer?: number[];
+  id_suggested?: number[];
   hasStock: boolean;
   stores_with_stock: number[];
   stores_with_low_stock: number[];
@@ -68,6 +99,8 @@ export interface SearchOptions {
   department?: string;
   subCategory?: string;
   onlyInStock?: boolean;
+  onlyOffers?: boolean;
+  suggestedId?: string;
 }
 
 export interface SearchResult {

@@ -7,7 +7,10 @@ import {
   fetchCities,
   fetchNearbyStores,
   getProductStockInStores,
-  getDepartments
+  getDepartments,
+  getProductOfferInfo,
+  fetchOffers,
+  fetchPromotionalBanners
 } from "./api";
 import { renderProductImage, openImageInBrowser } from "./image";
 import { getGlyphs } from "./glyphs";
@@ -43,6 +46,7 @@ export async function runCLI(argv: string[]) {
     .description("Buscar medicamentos o productos en Farmatodo Venezuela")
     .option("-c, --ciudad <codigo>", "Código de la ciudad (ej: CCS, VAL, MCBO, BQTO)", config.defaultCity)
     .option("-s, --en-stock", "Mostrar únicamente productos que tengan stock disponible")
+    .option("-o, --ofertas", "Mostrar únicamente productos en oferta o con descuento")
     .option("-d, --departamento <nombre>", "Filtrar por departamento (ej: 'Salud y Medicamentos')")
     .option("-l, --limite <n>", "Número máximo de resultados", "15")
     .option("--json", "Mostrar el resultado en formato JSON puro")
@@ -55,7 +59,8 @@ export async function runCLI(argv: string[]) {
             query: termino,
             hitsPerPage,
             department: opts.departamento,
-            onlyInStock: opts.enStock
+            onlyInStock: opts.enStock,
+            onlyOffers: opts.ofertas
           }),
           getExchangeRate()
         ]);
@@ -75,7 +80,7 @@ export async function runCLI(argv: string[]) {
           pc.gray(` | Ciudad: `) +
           pc.cyan(opts.ciudad.toUpperCase())
         );
-        console.log(pc.gray(`Resultados para: "${pc.bold(termino)}" (${searchResult.nbHits} productos encontrados)`));
+        console.log(pc.gray(`Resultados para: "${pc.bold(termino)}"${opts.ofertas ? " [En Oferta]" : ""} (${searchResult.nbHits} productos encontrados)`));
         console.log(pc.gray("―".repeat(78)));
 
         if (searchResult.hits.length === 0) {
@@ -90,9 +95,21 @@ export async function runCLI(argv: string[]) {
           const brand = p.marca ? pc.gray(` [${p.marca}]`) : "";
           const id = pc.dim(`(#${p.id})`);
 
-          const priceBs = formatBs(p.fullPrice);
-          const priceUsd = formatUsd(p.fullPrice, rate);
-          const priceFormatted = pc.green(pc.bold(priceBs)) + pc.gray(` (${priceUsd})`);
+          const offerInfo = getProductOfferInfo(p, opts.ciudad, rate);
+          let priceFormatted = "";
+          let offerBadge = "";
+
+          if (offerInfo.hasOffer) {
+            offerBadge = ` ${pc.bgGreen(pc.black(pc.bold(` -${offerInfo.discountText} `)))}`;
+            const origBs = pc.strikethrough(pc.gray(formatBs(offerInfo.originalPrice)));
+            const offerBs = pc.green(pc.bold(formatBs(offerInfo.offerPrice)));
+            const offerUsd = pc.gray(`(${formatUsd(offerInfo.offerPrice, rate)})`);
+            priceFormatted = `${origBs}  ${offerBs} ${offerUsd}`;
+          } else {
+            const priceBs = formatBs(p.fullPrice);
+            const priceUsd = formatUsd(p.fullPrice, rate);
+            priceFormatted = pc.green(pc.bold(priceBs)) + pc.gray(` (${priceUsd})`);
+          }
 
           const rxBadge = p.requirePrescription === "true" || p.requirePrescription === true
             ? ` ${pc.bgRed(pc.white(" REQUIERE RÉCIPE "))}`
@@ -103,8 +120,11 @@ export async function runCLI(argv: string[]) {
             ? pc.green(`${NF.check} En ${stockCount} sucursales`)
             : pc.red(`${NF.crossMark} Sin stock online`);
 
-          console.log(`${num}${title}${brand} ${id}${rxBadge}`);
+          console.log(`${num}${title}${brand} ${id}${rxBadge}${offerBadge}`);
           console.log(`    ${NF.tag} Precio: ${priceFormatted}  |  ${NF.store} ${stockBadge}`);
+          if (offerInfo.hasOffer) {
+            console.log(pc.cyan(`       ↳ Ahorras: ${formatBs(offerInfo.savingsBs)} (${formatUsd(offerInfo.savingsBs, rate)})`));
+          }
           console.log("");
         });
 
@@ -117,6 +137,141 @@ export async function runCLI(argv: string[]) {
       } catch (err: any) {
         if (spinner) spinner.stop();
         console.error(pc.red(`Error al realizar la búsqueda:`), err.message);
+      }
+    });
+
+  // COMANDO: OFERTAS Y DESCUENTOS
+  program
+    .command("ofertas")
+    .alias("descuentos")
+    .alias("promos")
+    .description("Consultar promociones y productos con descuento en Farmatodo Venezuela")
+    .option("-c, --ciudad <codigo>", "Código de la ciudad (ej: CCS, VAL, MCBO)", config.defaultCity)
+    .option("-g, --categoria <id>", "Filtrar por ID de campaña/grupo sugerido (ej: 9837 para Higiene)")
+    .option("-l, --limite <n>", "Límite de productos a mostrar", "20")
+    .option("--campanas", "Listar los grupos y campañas de ofertas destacadas en la página")
+    .option("--json", "Mostrar resultado en formato JSON puro")
+    .action(async (opts) => {
+      const cityId = (opts.ciudad || config.defaultCity).toUpperCase();
+      const spinner = opts.json ? null : startCliSpinner(opts.campanas ? "Consultando campañas promocionales..." : "Consultando ofertas activas en Farmatodo...");
+
+      try {
+        const rate = await getExchangeRate();
+
+        if (opts.campanas) {
+          const banners = await fetchPromotionalBanners();
+          if (spinner) spinner.stop();
+
+          if (opts.json) {
+            console.log(JSON.stringify({ tasaBsPorDolar: rate, campanas: banners }, null, 2));
+            return;
+          }
+
+          console.log("");
+          console.log(
+            pc.bold(pc.blue(`${NF.cross} Farmatodo Venezuela`)) +
+            pc.gray(` | `) +
+            pc.green(pc.bold(`🏷️ Campañas de Ofertas Destacadas`)) +
+            pc.gray(` | Tasa: `) +
+            pc.yellow(pc.bold(`Bs. ${rate.toFixed(2)} / $`))
+          );
+          console.log(pc.gray("―".repeat(78)));
+
+          banners.forEach((b, idx) => {
+            const num = pc.gray(`${(idx + 1).toString().padStart(2, " ")}. `);
+            const idBadge = pc.cyan(`[ID: ${b.id}]`);
+            console.log(`${num}${pc.bold(b.name)} ${idBadge}`);
+            if (b.url) console.log(pc.gray(`    Enlace: ${b.url}`));
+          });
+
+          console.log(pc.gray("―".repeat(78)));
+          console.log(pc.gray(`Tip: Para ver productos de una campaña, usa: `) + pc.cyan(`farmatodo ofertas -g <ID>`));
+          console.log("");
+          return;
+        }
+
+        const hitsPerPage = parseInt(opts.limite, 10) || 20;
+        const searchResult = await fetchOffers({
+          cityId,
+          hitsPerPage,
+          suggestedId: opts.categoria
+        });
+
+        if (spinner) spinner.stop();
+
+        if (opts.json) {
+          console.log(JSON.stringify({ tasaBsPorDolar: rate, ciudad: cityId, ...searchResult }, null, 2));
+          return;
+        }
+
+        console.log("");
+        console.log(
+          pc.bold(pc.blue(`${NF.cross} Farmatodo Venezuela`)) +
+          pc.gray(` | `) +
+          pc.bgGreen(pc.black(pc.bold(` 🏷️ MUNDO OFERTAS Y DESCUENTOS `))) +
+          pc.gray(` | Tasa: `) +
+          pc.yellow(pc.bold(`Bs. ${rate.toFixed(2)} / $`)) +
+          pc.gray(` | Ciudad: `) +
+          pc.cyan(cityId)
+        );
+        console.log(pc.gray(`Se encontraron ${pc.bold(searchResult.nbHits.toString())} productos con descuento disponible:`));
+        console.log(pc.gray("―".repeat(78)));
+
+        if (searchResult.hits.length === 0) {
+          console.log(pc.yellow(`\n${NF.warning} No se encontraron ofertas activas en este momento.`));
+          console.log(pc.gray("Las ofertas se renuevan frecuentemente, prueba de nuevo más tarde o revisa otra ciudad.\n"));
+          return;
+        }
+
+        searchResult.hits.forEach((p: FarmatodoProduct, idx: number) => {
+          const num = pc.gray(`${(idx + 1).toString().padStart(2, " ")}. `);
+          const title = pc.bold(p.mediaDescription);
+          const brand = p.marca ? pc.gray(` [${p.marca}]`) : "";
+          const id = pc.dim(`(#${p.id})`);
+
+          const offerInfo = getProductOfferInfo(p, cityId, rate);
+          let priceFormatted = "";
+          let offerBadge = "";
+
+          if (offerInfo.hasOffer) {
+            offerBadge = ` ${pc.bgGreen(pc.black(pc.bold(` -${offerInfo.discountText} `)))}`;
+            const origBs = pc.strikethrough(pc.gray(formatBs(offerInfo.originalPrice)));
+            const offerBs = pc.green(pc.bold(formatBs(offerInfo.offerPrice)));
+            const offerUsd = pc.gray(`(${formatUsd(offerInfo.offerPrice, rate)})`);
+            priceFormatted = `${origBs}  ${offerBs} ${offerUsd}`;
+          } else {
+            const priceBs = formatBs(p.fullPrice);
+            const priceUsd = formatUsd(p.fullPrice, rate);
+            priceFormatted = pc.green(pc.bold(priceBs)) + pc.gray(` (${priceUsd})`);
+          }
+
+          const rxBadge = p.requirePrescription === "true" || p.requirePrescription === true
+            ? ` ${pc.bgRed(pc.white(" REQUIERE RÉCIPE "))}`
+            : "";
+
+          const stockCount = p.stores_with_stock?.length || 0;
+          const stockBadge = stockCount > 0
+            ? pc.green(`${NF.check} En ${stockCount} farmacias`)
+            : pc.red(`${NF.crossMark} Sin stock online`);
+
+          console.log(`${num}${title}${brand} ${id}${rxBadge}${offerBadge}`);
+          console.log(`    ${NF.tag} Precio: ${priceFormatted}  |  ${NF.store} ${stockBadge}`);
+          if (offerInfo.hasOffer) {
+            console.log(pc.cyan(`       ↳ Ahorro directo: ${formatBs(offerInfo.savingsBs)} (${formatUsd(offerInfo.savingsBs, rate)})`));
+          }
+          console.log("");
+        });
+
+        console.log(pc.gray("―".repeat(78)));
+        console.log(
+          pc.gray(`Tip: Explora las campañas con `) +
+          pc.cyan(`farmatodo ofertas --campanas`) +
+          pc.gray(` o abre el producto con `) +
+          pc.cyan(`farmatodo producto <ID>\n`)
+        );
+      } catch (err: any) {
+        if (spinner) spinner.stop();
+        console.error(pc.red(`Error al consultar ofertas:`), err.message);
       }
     });
 
@@ -162,16 +317,32 @@ export async function runCLI(argv: string[]) {
         }
         console.log(pc.gray("―".repeat(78)));
 
-        // Precios
-        const priceBs = formatBs(product.fullPrice);
-        const priceUsd = formatUsd(product.fullPrice, rate);
-        console.log(
-          pc.bold(`${NF.tag} Precio: `) +
-          pc.green(pc.bold(priceBs)) +
-          pc.gray(` | `) +
-          pc.yellow(pc.bold(priceUsd)) +
-          pc.gray(` (Tasa: Bs. ${rate.toFixed(2)})`)
-        );
+        // Precios y Ofertas
+        const offerInfo = getProductOfferInfo(product, cityId, rate);
+        if (offerInfo.hasOffer) {
+          console.log(
+            pc.bgGreen(pc.black(pc.bold(` ${NF.tag} ¡PRODUCTO EN PROMOCIÓN: -${offerInfo.discountText} DCTO! `))) +
+            "  " +
+            pc.cyan(pc.bold(`Ahorras ${formatBs(offerInfo.savingsBs)} (${formatUsd(offerInfo.savingsBs, rate)})`))
+          );
+          console.log(
+            pc.gray(`Precio regular: `) + pc.strikethrough(pc.gray(formatBs(offerInfo.originalPrice))) +
+            pc.gray(`  ›  Precio de oferta: `) + pc.green(pc.bold(formatBs(offerInfo.offerPrice))) +
+            pc.gray(` | `) +
+            pc.yellow(pc.bold(formatUsd(offerInfo.offerPrice, rate))) +
+            pc.gray(` (Tasa: Bs. ${rate.toFixed(2)})`)
+          );
+        } else {
+          const priceBs = formatBs(product.fullPrice);
+          const priceUsd = formatUsd(product.fullPrice, rate);
+          console.log(
+            pc.bold(`${NF.tag} Precio: `) +
+            pc.green(pc.bold(priceBs)) +
+            pc.gray(` | `) +
+            pc.yellow(pc.bold(priceUsd)) +
+            pc.gray(` (Tasa: Bs. ${rate.toFixed(2)})`)
+          );
+        }
 
         if (product.requirePrescription === "true" || product.requirePrescription === true) {
           console.log(pc.bgRed(pc.white(pc.bold(` ${NF.warning} MEDICAMENTO CON RÉCIPE MÉDICO OBLIGATORIO `))));
