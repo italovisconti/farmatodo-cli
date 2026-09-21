@@ -23,8 +23,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@opentui/core": "^0.4.5",
-    "@opentui/react": "^0.4.5",
+    "@opentui/core": "^0.5.11",
+    "@opentui/react": "^0.5.11",
     "commander": "^15.0.0",
     "picocolors": "^1.1.1",
     "react": "^19.2.6",
