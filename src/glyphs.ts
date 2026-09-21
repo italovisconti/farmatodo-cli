@@ -1,6 +1,8 @@
 export interface Glyphs {
+  brand: string;
   pill: string;
   cross: string;
+  hospital: string;
   store: string;
   city: string;
   dollar: string;
@@ -9,50 +11,93 @@ export interface Glyphs {
   cart: string;
   search: string;
   arrow: string;
+  pointer: string;
+  bullet: string;
   check: string;
   crossMark: string;
   warning: string;
   star: string;
+  sparkles: string;
+  lightning: string;
   image: string;
+  camera: string;
   clock: string;
+  truck: string;
+  package: string;
+  recipe: string;
+  globe: string;
+  bank: string;
+  exit: string;
+  enter: string;
+  heart: string;
 }
 
-const NERD_GLYPHS: Glyphs = {
-  pill: "💊",
-  cross: "✚",
-  store: "🏪",
-  city: "📍",
-  dollar: "💵",
-  bolivar: "🇻🇪",
-  tag: "🏷️",
-  cart: "🛒",
-  search: "🔍",
-  arrow: "›",
-  check: "✔",
-  crossMark: "✖",
-  warning: "⚠",
-  star: "★",
-  image: "🖼️",
-  clock: "🕒"
+const NERD_KITTY_GLYPHS: Glyphs = {
+  brand: "\u271a",       // ✚ Farmatodo cross
+  pill: "\uf0fa",        //  Medical kit
+  cross: "\u271a",       // ✚
+  hospital: "\uf0f8",    //  Hospital / Pharmacy
+  store: "\uf0f8",       //  Pharmacy store
+  city: "\uf041",        //  Map marker
+  dollar: "\uf155",      //  Dollar
+  bolivar: "Bs.",        // Bs.
+  tag: "\uf02b",         //  Department tag
+  cart: "\uf07a",        //  Cart
+  search: "\uf002",      //  Search
+  arrow: "\u203a",       // ›
+  pointer: "\u276f",     // ❯
+  bullet: "\u2022",      // •
+  check: "\uf00c",       //  Check
+  crossMark: "\uf00d",   //  Cross
+  warning: "\uf071",     //  Warning triangle
+  star: "\uf005",        //  Star
+  sparkles: "\uf005",    //  Star
+  lightning: "\u26a1",   // ⚡ Lightning
+  image: "\uf030",       //  Camera
+  camera: "\uf030",      //  Camera
+  clock: "\uf017",       //  Clock
+  truck: "\uf0d1",       //  Truck
+  package: "\uf1b2",     //  3D Package
+  recipe: "\uf071 Rx",   //  Rx Prescription
+  globe: "\uf0ac",       //  Globe
+  bank: "BCV",           // BCV
+  exit: "\uf08b",        //  Sign out
+  enter: "\u21b5",       // ↵ Enter
+  heart: "\uf21e"        //  Heartbeat
 };
 
 const STANDARD_GLYPHS: Glyphs = {
+  brand: "[+]",
   pill: "[Rx]",
   cross: "[+]",
+  hospital: "[FARMACIA]",
   store: "[SUCURSAL]",
   city: "[CIUDAD]",
   dollar: "[$]",
   bolivar: "[Bs]",
-  tag: "[PRECIO]",
+  tag: "[DEPTO]",
   cart: "[CARRITO]",
   search: "[BUSCAR]",
   arrow: ">",
+  pointer: "▸",
+  bullet: "•",
   check: "[OK]",
   crossMark: "[X]",
   warning: "[!]",
   star: "*",
+  sparkles: "*",
+  lightning: "~",
   image: "[FOTO]",
-  clock: "[HORA]"
+  camera: "[FOTO]",
+  clock: "[HORA]",
+  truck: "[ENVIO]",
+  package: "[STOCK]",
+  recipe: "[RECIPE]",
+  globe: "[WEB]",
+  bank: "[BCV]",
+  exit: "[SALIR]",
+  enter: "[ENTER]",
+  heart: "<3"
 };
 
 export function getGlyphs(): Glyphs {
@@ -61,17 +106,6 @@ export function getGlyphs(): Glyphs {
     return STANDARD_GLYPHS;
   }
 
-  const termProgram = env.TERM_PROGRAM || "";
-  const isNerdSupported =
-    env.NERD_FONTS === "1" ||
-    env.NERD_FONTS === "true" ||
-    termProgram.includes("iTerm") ||
-    termProgram.includes("WezTerm") ||
-    termProgram.includes("kitty") ||
-    termProgram.includes("Alacritty") ||
-    termProgram.includes("vscode") ||
-    env.TERMINAL_EMULATOR?.includes("JetBrains") ||
-    Boolean(env.COLORTERM);
-
-  return isNerdSupported ? NERD_GLYPHS : STANDARD_GLYPHS;
+  // Activar por defecto para terminales modernos como Kitty, Alacritty, iTerm2, WezTerm
+  return NERD_KITTY_GLYPHS;
 }

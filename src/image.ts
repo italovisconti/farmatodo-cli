@@ -23,14 +23,14 @@ export async function renderProductImage(imageUrl: string, width = 40): Promise<
     const arrayBuf = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuf);
 
-    // Prioridad 1: Intentar usar `timg` si está en el sistema (soporta Sixel/Kitty/Unicode alta fidelidad)
+    // Prioridad 1: Intentar usar `timg` si está en el sistema (24-bit truecolor halfblocks óptimos para Kitty y TUI)
     try {
       const isTimgInstalled = execSync("which timg", { stdio: "pipe" }).toString().trim();
       if (isTimgInstalled) {
         const tmpFile = path.join("/tmp", `farmatodo_${Date.now()}_${width}.jpg`);
         fs.writeFileSync(tmpFile, buffer);
         try {
-          const output = execSync(`timg -g ${width}x0 "${tmpFile}"`, { stdio: "pipe" }).toString();
+          const output = execSync(`timg -p half -g ${width}x0 "${tmpFile}"`, { stdio: "pipe" }).toString();
           imageCache.set(cacheKey, output);
           try { fs.unlinkSync(tmpFile); } catch (_) {}
           return output;

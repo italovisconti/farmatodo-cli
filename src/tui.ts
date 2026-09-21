@@ -15,7 +15,10 @@ import {
 } from "./api";
 import { renderProductImage, openImageInBrowser } from "./image";
 import { loadConfig, saveConfig } from "./config";
+import { getGlyphs } from "./glyphs";
 import type { FarmatodoProduct, City, Store } from "./types";
+
+const G = getGlyphs();
 
 // Paleta Corporativa Oficial Farmatodo Venezuela
 export const THEME = {
@@ -191,7 +194,7 @@ export class FarmatodoTUI {
     });
 
     this.footerText = new TextRenderable(renderer, {
-      content: "[Tab/1-4] Vistas  [/] Buscar  [↑/↓] Navegar  [Enter] Detalle  [p/i] Foto  [c] Ciudad  [q] Salir",
+      content: `[Tab/1-4] Vistas  •  ${G.search} [/] Buscar  •  ▲▼ Navegar  •  ${G.enter} Detalle  •  ${G.camera} [p/i] Foto  •  ${G.city} [c] Ciudad  •  ${G.exit} [q] Salir`,
       fg: THEME.white
     });
 
@@ -486,19 +489,19 @@ export class FarmatodoTUI {
   }
 
   updateHeader() {
-    this.headerLeftText.content = `[+] FARMATODO VENEZUELA  |  Tasa BCV: Bs. ${this.exchangeRate.toFixed(2)} / $`;
-    this.headerRightText.content = `Ciudad: [${this.selectedCity}] (Presiona [c])`;
+    this.headerLeftText.content = `${G.brand} FARMATODO VENEZUELA  |  ${G.lightning} Tasa BCV: Bs. ${this.exchangeRate.toFixed(2)} / $`;
+    this.headerRightText.content = `${G.city} Ciudad: [${this.selectedCity}] (Presiona [c])`;
   }
 
   updateTabBar() {
     clearBox(this.tabBarBox);
 
-    // Pill buttons de pestañas
+    // Pill buttons de pestañas con iconos enriquecidos
     const tabs = [
-      { id: "products", label: this.searchQuery ? "[1] Búsqueda" : "[1] Recomendados" },
-      { id: "stores", label: "[2] Farmacias" },
-      { id: "departments", label: "[3] Deptos" },
-      { id: "cities", label: "[4] Ciudades" }
+      { id: "products", label: this.searchQuery ? `${G.search} [1] Búsqueda` : `${G.sparkles} [1] Destacados` },
+      { id: "stores", label: `${G.hospital} [2] Farmacias` },
+      { id: "departments", label: `${G.tag} [3] Deptos` },
+      { id: "cities", label: `${G.city} [4] Ciudades` }
     ];
 
     const leftTabGroup = new BoxRenderable(this.renderer, {
@@ -534,13 +537,13 @@ export class FarmatodoTUI {
     let searchColor = THEME.grayMuted;
 
     if (this.isSearching) {
-      searchContent = `¿Buscar?: [${this.searchInput}_] (Enter/Esc)`;
+      searchContent = `${G.search} [${this.searchInput}_] (Enter/Esc)`;
       searchColor = THEME.gold;
     } else if (this.searchQuery) {
-      searchContent = `Filtro: "${this.searchQuery}" [/]`;
+      searchContent = `${G.search} "${this.searchQuery}" [/]`;
       searchColor = THEME.blueAccent;
     } else {
-      searchContent = "Presiona [/] para buscar";
+      searchContent = `${G.search} [/] Buscar`;
       searchColor = THEME.grayMuted;
     }
 
@@ -581,13 +584,13 @@ export class FarmatodoTUI {
     const isRecommended = !this.searchQuery && !this.selectedDepartment;
     let listTitle = "";
     if (this.activeTab === "products") {
-      listTitle = isRecommended ? "DESTACADOS Y RECOMENDADOS" : `RESULTADOS (${this.products.length})`;
+      listTitle = isRecommended ? `${G.sparkles} DESTACADOS Y RECOMENDADOS` : `${G.search} RESULTADOS (${this.products.length})`;
     } else if (this.activeTab === "stores") {
-      listTitle = `FARMACIAS EN ${this.selectedCity} (${this.stores.length})`;
+      listTitle = `${G.hospital} FARMACIAS EN ${this.selectedCity} (${this.stores.length})`;
     } else if (this.activeTab === "departments") {
-      listTitle = `DEPARTAMENTOS (${this.departments.length})`;
+      listTitle = `${G.tag} DEPARTAMENTOS (${this.departments.length})`;
     } else {
-      listTitle = `CIUDADES (${this.cities.length})`;
+      listTitle = `${G.city} CIUDADES (${this.cities.length})`;
     }
 
     this.leftListBox.title = ` ${listTitle} [${totalItems > 0 ? this.selectedIndex + 1 : 0}/${totalItems}] `;
@@ -596,7 +599,7 @@ export class FarmatodoTUI {
     if (this.activeTab === "products") {
       if (this.products.length === 0) {
         this.leftListBox.add(new TextRenderable(this.renderer, {
-          content: `No se encontraron productos para "${this.searchQuery}". Presiona [/] para buscar.`,
+          content: `${G.warning} No se encontraron productos para "${this.searchQuery}". Presiona [/] para buscar.`,
           fg: THEME.amber
         }));
       } else {
@@ -607,15 +610,17 @@ export class FarmatodoTUI {
           const priceBs = formatBs(p.fullPrice);
           const priceUsd = formatUsd(p.fullPrice, this.exchangeRate);
           const stockCount = p.stores_with_stock?.length || 0;
-          const stockText = stockCount > 0 ? `✔ ${stockCount} tiendas` : "✖ Sin stock";
+          const stockText = stockCount > 0 ? `${G.check} ${stockCount} disp.` : `${G.crossMark} Agotado`;
+          const rxBadge = (p.requirePrescription === "true" || p.requirePrescription === true) ? "⚠️ " : "";
+          const pointer = isSel ? `${G.pointer} ` : "  ";
 
           const titleTxt = new TextRenderable(this.renderer, {
-            content: `${isSel ? "▸ " : "  "}${p.mediaDescription.slice(0, 42)}`,
+            content: `${pointer}${rxBadge}${p.mediaDescription.slice(0, 36)}`,
             fg: isSel ? THEME.gold : THEME.white
           });
 
           const subtitleTxt = new TextRenderable(this.renderer, {
-            content: `    ${priceBs} (${priceUsd})  •  ${stockText}`,
+            content: `    ${G.dollar} ${priceBs} (${priceUsd}) ${G.bullet} ${stockText}`,
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
@@ -626,7 +631,7 @@ export class FarmatodoTUI {
     } else if (this.activeTab === "stores") {
       if (this.stores.length === 0) {
         this.leftListBox.add(new TextRenderable(this.renderer, {
-          content: `No hay farmacias registradas para ${this.selectedCity}.`,
+          content: `${G.warning} No hay farmacias registradas para ${this.selectedCity}.`,
           fg: THEME.amber
         }));
       } else {
@@ -635,14 +640,15 @@ export class FarmatodoTUI {
           const absIdx = scrollOffset + relIdx;
           const isSel = absIdx === this.selectedIndex;
           const dist = st.distanceInKm ? ` (~${st.distanceInKm.toFixed(1)} km)` : "";
+          const pointer = isSel ? `${G.pointer} ` : "  ";
 
           const titleTxt = new TextRenderable(this.renderer, {
-            content: `${isSel ? "▸ " : "  "}${st.name}${dist}`,
+            content: `${pointer}${G.hospital} ${st.name}${dist}`,
             fg: isSel ? THEME.gold : THEME.white
           });
 
           const subtitleTxt = new TextRenderable(this.renderer, {
-            content: `    ${st.address.slice(0, 42)}`,
+            content: `    ${G.city} ${st.address.slice(0, 26)} ${G.bullet} ${G.clock} 24h`,
             fg: isSel ? THEME.blueAccent : THEME.grayMuted
           });
 
@@ -655,9 +661,10 @@ export class FarmatodoTUI {
       visibleSlice.forEach((d, relIdx) => {
         const absIdx = scrollOffset + relIdx;
         const isSel = absIdx === this.selectedIndex;
+        const pointer = isSel ? `${G.pointer} ` : "  ";
 
         const deptTxt = new TextRenderable(this.renderer, {
-          content: `${isSel ? "▸ " : "  "}${d.name} (${d.count})`,
+          content: `${pointer}${G.tag} ${d.name} (${d.count.toLocaleString("es-VE")})`,
           fg: isSel ? THEME.gold : THEME.white
         });
 
@@ -669,9 +676,11 @@ export class FarmatodoTUI {
         const absIdx = scrollOffset + relIdx;
         const isSel = absIdx === this.selectedIndex;
         const isCurrent = c.cityId === this.selectedCity;
+        const pointer = isSel ? `${G.pointer} ` : "  ";
+        const status = isCurrent ? `  ${G.check} Activa` : "";
 
         const cityTxt = new TextRenderable(this.renderer, {
-          content: `${isSel ? "▸ " : "  "}[${c.cityId}] ${c.name}${isCurrent ? " (Activa)" : ""}`,
+          content: `${pointer}${G.city} [${c.cityId}] ${c.name}${status}`,
           fg: isSel ? THEME.gold : isCurrent ? THEME.green : THEME.white
         });
 
@@ -680,12 +689,12 @@ export class FarmatodoTUI {
     }
 
     // --- PANEL DERECHO: DETALLE ---
-    this.rightDetailBox.title = " DETALLE ";
+    this.rightDetailBox.title = ` ${G.star} DETALLE `;
 
     const curProd = this.getCurrentProduct();
     if (this.activeTab === "products" && curProd) {
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: isRecommended ? "[PRODUCTO RECOMENDADO]" : "[FICHA DEL MEDICAMENTO]",
+        content: isRecommended ? `${G.sparkles} [PRODUCTO RECOMENDADO]` : `${G.pill} [FICHA DE MEDICAMENTO]`,
         fg: THEME.blueAccent
       }));
 
@@ -695,52 +704,52 @@ export class FarmatodoTUI {
       }));
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Marca: ${curProd.marca || "N/A"} | ID: #${curProd.id}`,
+        content: `${G.tag} Marca: ${curProd.marca || "N/A"}  ${G.bullet}  ID: #${curProd.id}`,
         fg: THEME.grayMuted
       }));
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Precio: ${formatBs(curProd.fullPrice)} (${formatUsd(curProd.fullPrice, this.exchangeRate)})`,
+        content: `${G.dollar} Precio: ${formatBs(curProd.fullPrice)} (${formatUsd(curProd.fullPrice, this.exchangeRate)})`,
         fg: THEME.green
       }));
 
       if (curProd.requirePrescription === "true" || curProd.requirePrescription === true) {
         this.rightDetailBox.add(new TextRenderable(this.renderer, {
-          content: "[!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO",
+          content: `${G.warning} [!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO`,
           fg: THEME.rxRed
         }));
       }
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Disponibilidad: ${curProd.stores_with_stock?.length || 0} farmacias activas`,
+        content: `${G.package} Disponibilidad: ${curProd.stores_with_stock?.length || 0} farmacias activas`,
         fg: THEME.blueAccent
       }));
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Ciudad: ${this.selectedCity}`,
+        content: `${G.city} Ciudad: ${this.selectedCity}`,
         fg: THEME.grayMuted
       }));
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: "[p] o [i]: Ver fotografía oficial en terminal",
+        content: `${G.camera} [p/i]: Ver fotografía oficial en terminal`,
         fg: THEME.gold
       }));
 
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: "[Enter]: Consultar sucursales con inventario",
+        content: `${G.enter} [Enter]: Consultar sucursales con inventario`,
         fg: THEME.grayLight
       }));
 
       if (isRecommended) {
         this.rightDetailBox.add(new TextRenderable(this.renderer, {
-          content: "Tip: Presiona [/] para buscar cualquier producto específico.",
+          content: `${G.sparkles} Tip: Presiona [/] para buscar cualquier producto específico.`,
           fg: THEME.grayMuted
         }));
       }
     } else if (this.activeTab === "stores" && this.stores[this.selectedIndex]) {
       const st = this.stores[this.selectedIndex]!;
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `[SUCURSAL ${st.name}]`,
+        content: `${G.hospital} [SUCURSAL ${st.name}]`,
         fg: THEME.blueAccent
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
@@ -748,39 +757,39 @@ export class FarmatodoTUI {
         fg: THEME.grayMuted
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Dirección: ${st.address}`,
+        content: `${G.city} Dirección: ${st.address}`,
         fg: THEME.white
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: "✔ Abierta con entrega y atención farmacéutica",
+        content: `${G.check} Abierta 24h con entrega farmacéutica`,
         fg: THEME.green
       }));
     } else if (this.activeTab === "departments" && this.departments[this.selectedIndex]) {
       const dep = this.departments[this.selectedIndex]!;
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `[DEPARTAMENTO ${dep.name}]`,
+        content: `${G.tag} [DEPARTAMENTO ${dep.name.toUpperCase()}]`,
         fg: THEME.blueAccent
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `${dep.count} productos registrados`,
+        content: `${G.package} ${dep.count.toLocaleString("es-VE")} productos registrados`,
         fg: THEME.gold
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: "Presiona [Enter] para cargar los productos de este departamento.",
+        content: `${G.enter} Presiona [Enter] para cargar los productos de este departamento.`,
         fg: THEME.grayLight
       }));
     } else if (this.activeTab === "cities" && this.cities[this.selectedIndex]) {
       const city = this.cities[this.selectedIndex]!;
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `[CIUDAD ${city.name} (${city.cityId})]`,
+        content: `${G.city} [CIUDAD ${city.name.toUpperCase()} (${city.cityId})]`,
         fg: THEME.blueAccent
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: `Tienda default: #${city.defaultStoreId}`,
+        content: `Tienda default: #${city.defaultStoreId}  ${G.bullet}  ${G.truck} ${city.deliveryType}`,
         fg: THEME.grayMuted
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
-        content: "Presiona [Enter] para establecer como tu ciudad.",
+        content: `${G.enter} Presiona [Enter] para establecer como tu ciudad.`,
         fg: THEME.gold
       }));
       this.rightDetailBox.add(new TextRenderable(this.renderer, {
@@ -805,7 +814,7 @@ export class FarmatodoTUI {
         border: true,
         borderStyle: "rounded",
         borderColor: THEME.blueAccent,
-        title: ` [FOTO] ${prod?.mediaDescription?.toUpperCase() || ""} `,
+        title: ` ${G.camera} [FOTO] ${prod?.mediaDescription?.toUpperCase() || ""} `,
         titleColor: THEME.gold,
         paddingX: 1,
         flexDirection: "column"
@@ -831,7 +840,7 @@ export class FarmatodoTUI {
       });
 
       footerModal.add(new TextRenderable(this.renderer, {
-        content: "[Esc/q] Volver a la lista  |  [o] Abrir en navegador",
+        content: `[Esc/q] Volver a la lista  ${G.bullet}  ${G.globe} [o] Abrir en navegador`,
         fg: THEME.gold
       }));
 
@@ -851,7 +860,7 @@ export class FarmatodoTUI {
         border: true,
         borderStyle: "rounded",
         borderColor: THEME.blueAccent,
-        title: ` [+] ${p.mediaDescription} `,
+        title: ` ${G.brand} ${p.mediaDescription} `,
         titleColor: THEME.gold,
         paddingX: 1,
         flexDirection: "column"
@@ -871,7 +880,7 @@ export class FarmatodoTUI {
       });
 
       leftCol.add(new TextRenderable(this.renderer, {
-        content: "[PRECIO Y TASA OFICIAL]",
+        content: `${G.dollar} [PRECIO Y TASA OFICIAL]`,
         fg: THEME.blueAccent
       }));
 
@@ -886,24 +895,24 @@ export class FarmatodoTUI {
       }));
 
       leftCol.add(new TextRenderable(this.renderer, {
-        content: `Tasa oficial: Bs. ${this.exchangeRate.toFixed(2)} / $`,
+        content: `${G.lightning} Tasa oficial BCV: Bs. ${this.exchangeRate.toFixed(2)} / $`,
         fg: THEME.grayMuted
       }));
 
       if (p.requirePrescription === "true" || p.requirePrescription === true) {
         leftCol.add(new TextRenderable(this.renderer, {
-          content: "[!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO",
+          content: `${G.warning} [!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO`,
           fg: THEME.rxRed
         }));
       }
 
       leftCol.add(new TextRenderable(this.renderer, {
-        content: `Depto: ${p.departments?.join(", ") || "General"}`,
+        content: `${G.tag} Depto: ${p.departments?.join(", ") || "General"}`,
         fg: THEME.grayLight
       }));
 
       leftCol.add(new TextRenderable(this.renderer, {
-        content: "[p] o [i]: Ver foto en terminal | [o] Abrir en navegador",
+        content: `${G.camera} [p/i] Ver foto  ${G.bullet}  ${G.globe} [o] Ver en web`,
         fg: THEME.gold
       }));
 
@@ -914,7 +923,7 @@ export class FarmatodoTUI {
       });
 
       rightCol.add(new TextRenderable(this.renderer, {
-        content: `[SUCURSALES EN ${this.selectedCity}]`,
+        content: `${G.hospital} [SUCURSALES EN ${this.selectedCity}]`,
         fg: THEME.green
       }));
 
@@ -927,17 +936,17 @@ export class FarmatodoTUI {
         const available = this.modalStockMap.filter(s => s.hasStock);
         if (available.length === 0) {
           rightCol.add(new TextRenderable(this.renderer, {
-            content: `Sin unidades disponibles en farmacias de ${this.selectedCity}`,
+            content: `${G.crossMark} Sin unidades disponibles en farmacias de ${this.selectedCity}`,
             fg: THEME.rxRed
           }));
         } else {
           this.modalStockMap.slice(0, 10).forEach(({ store, hasStock, isLowStock }) => {
             rightCol.add(new TextRenderable(this.renderer, {
-              content: `${hasStock ? (isLowStock ? "▲ [Pocas un.] " : "✔ [Disponible] ") : "✖ [Agotado] "}${store.name}`,
+              content: `${hasStock ? (isLowStock ? `${G.warning} [Pocas un.] ` : `${G.check} [En Stock] `) : `${G.crossMark} [Agotado] `}${store.name}`,
               fg: hasStock ? (isLowStock ? THEME.amber : THEME.green) : THEME.grayMuted
             }));
             rightCol.add(new TextRenderable(this.renderer, {
-              content: `  ${store.address.slice(0, 44)}`,
+              content: `   ${G.city} ${store.address.slice(0, 42)}`,
               fg: THEME.grayMuted
             }));
           });
@@ -956,12 +965,12 @@ export class FarmatodoTUI {
       });
 
       footer.add(new TextRenderable(this.renderer, {
-        content: "[Esc/q] Volver a la lista  |  [p/i] Ver foto  |  [o] Web",
+        content: `[Esc/q] Volver  ${G.bullet}  ${G.camera} [p/i] Ver foto  ${G.bullet}  ${G.globe} [o] Web`,
         fg: THEME.white
       }));
 
       footer.add(new TextRenderable(this.renderer, {
-        content: `Ciudad: ${this.selectedCity}`,
+        content: `${G.city} Ciudad: ${this.selectedCity}`,
         fg: THEME.blueAccent
       }));
 

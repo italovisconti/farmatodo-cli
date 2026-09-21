@@ -9,9 +9,16 @@ def render_spans_to_png(spans_data, output_path, title="Farmatodo CLI - OpenTUI"
     rows = spans_data.get("rows", 26)
     lines = spans_data.get("lines", [])
 
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-    bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
-    title_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+    nerd_font = os.path.expanduser("~/.fonts/DejaVuSansMNerdFontMono-Regular.ttf")
+    nerd_bold = os.path.expanduser("~/.fonts/DejaVuSansMNerdFontMono-Bold.ttf")
+    if os.path.exists(nerd_font):
+        font_path = nerd_font
+        bold_font_path = nerd_bold if os.path.exists(nerd_bold) else nerd_font
+        title_font_path = nerd_font
+    else:
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+        bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
+        title_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 
     font_size = 15
     font = ImageFont.truetype(font_path, font_size)

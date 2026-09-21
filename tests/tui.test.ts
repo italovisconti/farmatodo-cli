@@ -91,7 +91,7 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     expect(frame).not.toContain("Buscador0de");
 
     // 4. Pestañas visibles en una sola fila
-    expect(frame).toContain("[1] Recomendados");
+    expect(frame).toContain("[1] Destacados");
     expect(frame).toContain("[2] Farmacias");
     expect(frame).toContain("[3] Deptos");
     expect(frame).toContain("[4] Ciudades");
@@ -172,20 +172,20 @@ describe("Farmatodo TUI Visual and Functional Tests (OpenTUI Core)", () => {
     await testSetup.renderOnce();
 
     let frame = testSetup.captureCharFrame();
-    expect(frame).toContain("¿Buscar?: [_]");
+    expect(frame).toContain("[_] (Enter/Esc)");
 
     // Escribir texto con typeText
     testSetup.mockInput.typeText("flips");
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).toContain("¿Buscar?: [flips_]");
+    expect(frame).toContain("[flips_] (Enter/Esc)");
 
     // Cancelar enviando escape
     testSetup.renderer.keyInput.emit("keypress", { name: "escape" });
     await testSetup.renderOnce();
 
     frame = testSetup.captureCharFrame();
-    expect(frame).not.toContain("¿Buscar?: [flips_]");
+    expect(frame).not.toContain("[flips_] (Enter/Esc)");
   });
 });
