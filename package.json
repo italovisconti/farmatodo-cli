@@ -1,33 +1,31 @@
 {
   "name": "farmatodo-cli",
   "version": "1.0.0",
-  "description": "CLI y TUI interactiva para Farmatodo Venezuela: buscador de medicamentos y productos, precios en Bs y USD, stock en tiempo real por sucursal, tasa oficial BCV y directorio de farmacias.",
-  "module": "src/index.tsx",
+  "description": "CLI y TUI interactiva nativa con OpenTUI Core para Farmatodo Venezuela: buscador de medicamentos y productos, precios en Bs y USD, stock en tiempo real por sucursal, tasa oficial BCV y directorio de farmacias.",
+  "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "farmatodo": "./src/index.tsx"
+    "farmatodo": "./src/index.ts"
   },
   "private": true,
   "scripts": {
-    "start": "bun run src/index.tsx",
-    "tui": "bun run src/index.tsx tui",
-    "buscar": "bun run src/index.tsx buscar",
-    "dev": "bun run --watch src/index.tsx",
-    "build": "bun build --compile --minify src/index.tsx --outfile dist/farmatodo"
+    "start": "bun run src/index.ts",
+    "tui": "bun run src/index.ts tui",
+    "buscar": "bun run src/index.ts buscar",
+    "test": "bun test",
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build --compile --minify src/index.ts --outfile dist/farmatodo"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/react": "^19.2.17"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@opentui/core": "^0.5.11",
-    "@opentui/react": "^0.5.11",
     "commander": "^15.0.0",
     "picocolors": "^1.1.1",
-    "react": "^19.2.6",
     "terminal-image": "^5.0.1"
   }
 }
