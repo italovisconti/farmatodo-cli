@@ -11,10 +11,27 @@ import {
   getDepartments
 } from "./api";
 import { renderProductImage, openImageInBrowser } from "./image";
-import { getGlyphs } from "./glyphs";
 import { getSpinnerFrames } from "./spinner";
 import { loadConfig, saveConfig } from "./config";
 import type { FarmatodoProduct, City, Store } from "./types";
+
+// Paleta Oficial de Colores Farmatodo
+const THEME = {
+  navy: "#002855",        // Azul marino institucional Farmatodo
+  navyDark: "#001B3A",    // Azul noche para fondos
+  blueAccent: "#00A3E0",  // Cyan / Celeste oficial
+  red: "#E31B23",         // Rojo cruz médica Farmatodo
+  gold: "#FFC72C",        // Amarillo dorado promociones
+  white: "#FFFFFF",       // Blanco
+  grayLight: "#E2E8F0",   // Gris claro texto secundario
+  grayMuted: "#64748B",   // Gris pizarra tenue
+  grayDark: "#1E293B",    // Gris oscuro
+  borderNavy: "#1E3A8A",  // Borde azul corporativo
+  borderActive: "#00A3E0",// Borde activo celeste
+  green: "#10B981",       // Verde inventario disponible
+  amber: "#F59E0B",       // Ámbar pocas unidades
+  rxRed: "#EF4444"        // Rojo advertencia récipe
+};
 
 function formatBs(val: number): string {
   return `Bs. ${Number(val).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -29,9 +46,8 @@ function formatUsd(bs: number, rate: number): string {
 function FarmatodoApp() {
   const renderer = useRenderer();
   const dims = useTerminalDimensions();
-  const columns = dims.width || 80;
-  const rows = dims.height || 24;
-  const NF = getGlyphs();
+  const columns = Math.max(60, dims.width || 80);
+  const rows = Math.max(18, dims.height || 24);
   const spinnerFrames = getSpinnerFrames();
   const initialConfig = loadConfig();
 
@@ -48,7 +64,7 @@ function FarmatodoApp() {
   const [departments, setDepartments] = useState<{ name: string; count: number }[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
 
-  // Navegación y selección
+  // Navegación
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("acetaminofen");
   const [searchInput, setSearchInput] = useState("");
@@ -61,7 +77,6 @@ function FarmatodoApp() {
   const [imageArt, setImageArt] = useState<string>("");
   const [loadingImage, setLoadingImage] = useState(false);
 
-  // Spinner animation
   const [spinnerIdx, setSpinnerIdx] = useState(0);
 
   useEffect(() => {
@@ -72,14 +87,14 @@ function FarmatodoApp() {
     return () => clearInterval(timer);
   }, [loading, loadingImage, spinnerFrames.length]);
 
-  // Cargar datos iniciales
+  // Carga inicial
   const loadInitialData = async () => {
     setLoading(true);
     try {
       const [rate, fetchedCities, initialSearch, fetchedStores, fetchedDepts] = await Promise.all([
         getExchangeRate(),
         fetchCities(),
-        searchProducts({ query: searchQuery, hitsPerPage: 20 }),
+        searchProducts({ query: searchQuery, hitsPerPage: 30 }),
         fetchNearbyStores(selectedCity),
         getDepartments()
       ]);
@@ -100,14 +115,13 @@ function FarmatodoApp() {
     loadInitialData();
   }, []);
 
-  // Cargar productos al cambiar búsqueda o departamento
   const executeSearch = async (term: string, dept = selectedDepartment) => {
     setLoading(true);
     try {
       const res = await searchProducts({
         query: term,
         department: dept || undefined,
-        hitsPerPage: 25
+        hitsPerPage: 30
       });
       setProducts(res.hits);
       setSelectedIndex(0);
@@ -118,7 +132,6 @@ function FarmatodoApp() {
     }
   };
 
-  // Actualizar sucursales si cambia de ciudad
   const handleCityChange = async (newCityId: string) => {
     setSelectedCity(newCityId);
     saveConfig({ defaultCity: newCityId });
@@ -130,7 +143,6 @@ function FarmatodoApp() {
     setSelectedIndex(0);
   };
 
-  // Cargar stock para el modal de detalle
   const openDetailModal = async (prod: FarmatodoProduct) => {
     setDetailModalProduct(prod);
     try {
@@ -141,13 +153,12 @@ function FarmatodoApp() {
     }
   };
 
-  // Renderizar imagen de producto en terminal
   const openTerminalImage = async (prod: FarmatodoProduct) => {
     if (!prod || !prod.mediaImageUrl) return;
     setShowImageView(true);
     setLoadingImage(true);
     try {
-      const targetWidth = Math.max(30, Math.min(columns - 10, 48));
+      const targetWidth = Math.max(28, Math.min(columns - 12, 45));
       const art = await renderProductImage(prod.mediaImageUrl, targetWidth);
       setImageArt(art);
     } catch (e) {
@@ -168,9 +179,8 @@ function FarmatodoApp() {
 
   const currentProduct = activeTab === "products" ? products[selectedIndex] : null;
 
-  // Manejo de teclado
+  // Manejo de eventos de teclado
   useKeyboard((event: { name: string; sequence?: string }) => {
-    // Si el usuario está escribiendo en el buscador
     if (isSearching) {
       if (event.name === "escape") {
         setIsSearching(false);
@@ -196,7 +206,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Salir del visor de imagen
     if (showImageView) {
       if (event.name === "escape" || event.name === "p" || event.name === "i" || event.name === "q") {
         setShowImageView(false);
@@ -210,7 +219,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Salir del modal de detalle
     if (detailModalProduct) {
       if (event.name === "escape" || event.name === "q") {
         setDetailModalProduct(null);
@@ -227,7 +235,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Navegación general
     if (event.name === "q") {
       renderer.destroy();
       process.exit(0);
@@ -239,7 +246,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Cambiar de tab con teclas 1, 2, 3, 4 o Tab
     if (event.name === "tab") {
       if (activeTab === "products") setActiveTab("stores");
       else if (activeTab === "stores") setActiveTab("departments");
@@ -254,14 +260,12 @@ function FarmatodoApp() {
     if (event.name === "3") { setActiveTab("departments"); setSelectedIndex(0); return; }
     if (event.name === "4" || event.name === "c") { setActiveTab("cities"); setSelectedIndex(0); return; }
 
-    // Activar buscador
     if (event.name === "/" || event.name === "s") {
       setIsSearching(true);
       setSearchInput("");
       return;
     }
 
-    // Ver foto del producto seleccionado
     if (event.name === "p" || event.name === "i") {
       if (currentProduct) openTerminalImage(currentProduct);
       return;
@@ -272,7 +276,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Subir / Bajar en la lista
     if (event.name === "up" || event.name === "k") {
       setSelectedIndex((prev) => Math.max(0, prev - 1));
       return;
@@ -283,7 +286,6 @@ function FarmatodoApp() {
       return;
     }
 
-    // Enter / Seleccionar elemento
     if (event.name === "return" || event.name === "enter") {
       if (activeTab === "products" && products[selectedIndex]) {
         openDetailModal(products[selectedIndex]);
@@ -300,36 +302,55 @@ function FarmatodoApp() {
 
   const currentSpinnerFrame = spinnerFrames[spinnerIdx];
 
-  // 1. VISOR DE IMAGEN EN TERMINAL
+  // Cálculo estricto de alturas para evitar cualquier desbordamiento vertical
+  // Estructura vertical fija:
+  // - Header: 3 líneas
+  // - Tab bar: 3 líneas
+  // - Footer: 3 líneas
+  // Altura total reservada = 9 líneas
+  const availableContentHeight = Math.max(8, rows - 9);
+  // Dentro del panel con borde (resta 2 filas por los bordes superior e inferior):
+  const innerListHeight = Math.max(6, availableContentHeight - 2);
+
+  // Paginación en ventana deslizante para que nunca sobrepase el contenedor
+  const itemRowHeight = 2; // Cada producto ocupa exactamente 2 líneas
+  const maxVisibleItems = Math.max(2, Math.floor(innerListHeight / itemRowHeight));
+  const scrollOffset = Math.min(
+    Math.max(0, selectedIndex - Math.floor(maxVisibleItems / 2)),
+    Math.max(0, currentListLength - maxVisibleItems)
+  );
+
+  // 1. VISOR DE FOTO EN TERMINAL
   if (showImageView) {
     const prod = detailModalProduct || currentProduct;
     return (
-      <box width={columns} height={rows} flexDirection="column" padding={1} border style={{ borderColor: "blue" }}>
-        <box border padding={1} marginBottom={1} style={{ borderColor: "cyan" }}>
-          <text fg="yellow">
-            <strong>{NF.image} FOTO DEL PRODUCTO: {prod?.mediaDescription?.toUpperCase()}</strong>
+      <box width={columns} height={rows} flexDirection="column" border borderStyle="rounded" borderColor={THEME.blueAccent}>
+        <box height={1} paddingX={1} flexDirection="row" justifyContent="space-between">
+          <text fg={THEME.gold}>
+            <strong>[FOTO] {prod?.mediaDescription?.toUpperCase()}</strong>
           </text>
+          <text fg={THEME.blueAccent}><strong>ID: #{prod?.id}</strong></text>
         </box>
 
-        <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">
+        <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column" overflow="hidden">
           {loadingImage ? (
-            <text fg="cyan"><strong>{currentSpinnerFrame} Descargando y renderizando imagen en terminal...</strong></text>
+            <text fg={THEME.blueAccent}><strong>{currentSpinnerFrame} Descargando y procesando imagen en terminal...</strong></text>
           ) : (
-            <scrollbox height={rows - 8}>
-              <text fg="white">{imageArt}</text>
+            <scrollbox height={Math.max(6, rows - 6)}>
+              <text fg={THEME.white}>{imageArt}</text>
             </scrollbox>
           )}
         </box>
 
-        <box marginTop={1} style={{ backgroundColor: "blue" }} padding={1} flexDirection="row" justifyContent="space-between">
-          <text fg="white"><strong>[Esc/q] Volver | [o] Abrir en navegador</strong></text>
-          <text fg="yellow"><strong>ID: #{prod?.id}</strong></text>
+        <box height={1} paddingX={1} backgroundColor={THEME.navy} flexDirection="row" justifyContent="space-between">
+          <text fg={THEME.white}><strong>[Esc/q] Regresar a la lista  |  [o] Abrir en navegador web</strong></text>
+          <text fg={THEME.gold}><strong>Farmatodo VE</strong></text>
         </box>
       </box>
     );
   }
 
-  // 2. MODAL DE DETALLE COMPLETO DEL PRODUCTO
+  // 2. MODAL DE DETALLE COMPLETO
   if (detailModalProduct) {
     const priceBs = formatBs(detailModalProduct.fullPrice);
     const priceUsd = formatUsd(detailModalProduct.fullPrice, exchangeRate);
@@ -337,53 +358,56 @@ function FarmatodoApp() {
     const availableStores = modalStockMap.filter((s) => s.hasStock);
 
     return (
-      <box width={columns} height={rows} flexDirection="column" padding={1} border style={{ borderColor: "cyan" }}>
-        <box border padding={1} marginBottom={1} style={{ borderColor: "yellow" }}>
-          <text fg="yellow">
-            <strong>{NF.pill} {detailModalProduct.mediaDescription.toUpperCase()}</strong>
+      <box width={columns} height={rows} flexDirection="column">
+        {/* Cabecera modal */}
+        <box height={3} border borderStyle="rounded" borderColor={THEME.blueAccent} paddingX={1} flexDirection="row" justifyContent="space-between" alignItems="center">
+          <text fg={THEME.white}>
+            <span fg={THEME.red}><strong>[+] </strong></span>
+            <strong>{detailModalProduct.mediaDescription}</strong>
+            <span fg={THEME.grayMuted}> | Marca: {detailModalProduct.marca || "N/A"}</span>
           </text>
-          <text fg="gray"> | Marca: {detailModalProduct.marca || "N/A"} | ID: #{detailModalProduct.id}</text>
+          <text fg={THEME.gold}><strong>ID: #{detailModalProduct.id}</strong></text>
         </box>
 
-        <box flexDirection="row" flexGrow={1}>
-          {/* Columna Izquierda: Precios y Descripción */}
-          <box width="45%" flexDirection="column" paddingRight={1} border style={{ borderColor: "gray" }}>
-            <text fg="cyan"><strong>[PRECIO Y TASA OFICIAL]</strong></text>
-            <text fg="green"><strong>{priceBs}</strong></text>
-            <text fg="yellow"><strong>{priceUsd}</strong></text>
-            <text fg="gray">Tasa BCV/Farmatodo: Bs. {exchangeRate.toFixed(2)} / $</text>
+        {/* Contenido dividido modal */}
+        <box height={availableContentHeight} flexDirection="row">
+          {/* Lado izquierdo: Precios y Ficha */}
+          <box width="50%" border borderStyle="rounded" borderColor={THEME.borderNavy} paddingX={1} flexDirection="column">
+            <text fg={THEME.blueAccent}><strong>[PRECIO Y TASA OFICIAL]</strong></text>
+            <text fg={THEME.green}><strong>{priceBs}</strong></text>
+            <text fg={THEME.gold}><strong>{priceUsd}</strong></text>
+            <text fg={THEME.grayMuted}>Tasa oficial: Bs. {exchangeRate.toFixed(2)} / $</text>
 
             <box height={1} />
             {hasRx && (
-              <box border padding={1} style={{ borderColor: "red" }} marginBottom={1}>
-                <text fg="red"><strong>{NF.warning} REQUIERE RÉCIPE MÉDICO OBLIGATORIO</strong></text>
-              </box>
+              <text fg={THEME.rxRed}><strong>[!] REQUIERE RÉCIPE MÉDICO OBLIGATORIO</strong></text>
             )}
 
-            <text fg="cyan"><strong>[INFORMACIÓN DEL PRODUCTO]</strong></text>
-            <text fg="white">Departamento: {detailModalProduct.departments?.join(", ") || "General"}</text>
-            <text fg="white">Categoría: {detailModalProduct.subCategory || "General"}</text>
+            <box height={1} />
+            <text fg={THEME.blueAccent}><strong>[CATÁLOGO]</strong></text>
+            <text fg={THEME.grayLight}>Depto: {detailModalProduct.departments?.join(", ") || "General"}</text>
+            <text fg={THEME.grayLight}>Rubro: {detailModalProduct.subCategory || "General"}</text>
 
             <box height={1} />
-            <text fg="yellow"><strong>{NF.image} Presiona [p] o [i] para ver la foto en terminal</strong></text>
-            <text fg="gray">Presiona [o] para abrir imagen en navegador</text>
+            <text fg={THEME.gold}><strong>[p] o [i]: Ver foto en terminal</strong></text>
+            <text fg={THEME.grayMuted}>[o]: Abrir foto en navegador</text>
           </box>
 
-          {/* Columna Derecha: Disponibilidad en Sucursales */}
-          <box width="55%" flexDirection="column" paddingLeft={1} border style={{ borderColor: "gray" }}>
-            <text fg="green"><strong>{NF.store} DISPONIBILIDAD EN SUCURSALES ({selectedCity}):</strong></text>
-            <scrollbox height={rows - 10}>
+          {/* Lado derecho: Sucursales con stock */}
+          <box width="50%" border borderStyle="rounded" borderColor={THEME.borderNavy} paddingX={1} flexDirection="column">
+            <text fg={THEME.green}><strong>[SUCURSALES EN {selectedCity}]</strong></text>
+            <scrollbox height={innerListHeight - 2}>
               {modalStockMap.length === 0 ? (
-                <text fg="gray">Consultando inventario en farmacias...</text>
+                <text fg={THEME.grayMuted}>Consultando disponibilidad en farmacias...</text>
               ) : availableStores.length === 0 ? (
-                <text fg="red">✖ Agotado en todas las farmacias registradas de {selectedCity}</text>
+                <text fg={THEME.rxRed}>Sin unidades disponibles en farmacias de {selectedCity}</text>
               ) : (
                 modalStockMap.map(({ store, hasStock, isLowStock }, idx) => (
                   <box key={idx} flexDirection="column" marginBottom={1}>
-                    <text fg={hasStock ? (isLowStock ? "yellow" : "green") : "gray"}>
-                      <strong>{hasStock ? (isLowStock ? "▲ [Pocas unidades]" : "✔ [Disponible]") : "✖ [Sin stock]"} {store.name}</strong>
+                    <text fg={hasStock ? (isLowStock ? THEME.amber : THEME.green) : THEME.grayMuted}>
+                      <strong>{hasStock ? (isLowStock ? "▲ [Pocas un.] " : "✔ [Disponible] ") : "✖ [Agotado] "}{store.name}</strong>
                     </text>
-                    <text fg="gray">{store.address.slice(0, 55)}</text>
+                    <text fg={THEME.grayMuted}>{"  "}{store.address.slice(0, 48)}</text>
                   </box>
                 ))
               )}
@@ -391,91 +415,108 @@ function FarmatodoApp() {
           </box>
         </box>
 
-        {/* Footer Modal */}
-        <box border marginTop={1} padding={1} style={{ borderColor: "cyan" }} flexDirection="row" justifyContent="space-between">
-          <text fg="yellow"><strong>[Esc/q] Volver al listado  |  [p/i] Ver foto  |  [o] Abrir foto web</strong></text>
-          <text fg="green"><strong>Ciudad: {selectedCity}</strong></text>
+        {/* Footer modal */}
+        <box height={3} border borderStyle="rounded" borderColor={THEME.blueAccent} paddingX={1} flexDirection="row" justifyContent="space-between" alignItems="center">
+          <text fg={THEME.white}><strong>[Esc/q] Volver a la lista  |  [p/i] Ver foto  |  [o] Web</strong></text>
+          <text fg={THEME.blueAccent}><strong>Ciudad: {selectedCity}</strong></text>
         </box>
       </box>
     );
   }
 
-  // 3. VISTA PRINCIPAL (DASHBOARD TUI)
+  // 3. DASHBOARD PRINCIPAL TUI
   return (
-    <box width={columns} height={rows} flexDirection="column" padding={1}>
-      {/* Cabecera Principal */}
-      <box border padding={1} marginBottom={1} style={{ borderColor: "blue" }} flexDirection="row" justifyContent="space-between">
-        <box flexDirection="column">
-          <text fg="blue">
-            <strong>{NF.cross} FARMATODO VENEZUELA CLI</strong>
-          </text>
-          <text fg="gray">Buscador de medicamentos, precios duales y stock por sucursal</text>
+    <box width={columns} height={rows} flexDirection="column">
+      {/* Cabecera Principal (3 filas exactas) */}
+      <box height={3} border borderStyle="rounded" borderColor={THEME.blueAccent} paddingX={1} flexDirection="row" justifyContent="space-between" alignItems="center">
+        <box flexDirection="row">
+          <text fg={THEME.red}><strong>[+] </strong></text>
+          <text fg={THEME.blueAccent}><strong>FARMATODO VENEZUELA</strong></text>
+          <text fg={THEME.grayMuted}> | Medicamentos, Precios y Sucursales</text>
         </box>
-        <box flexDirection="column" alignItems="flex-end">
-          <text fg="yellow">
-            <strong>{NF.dollar} Tasa oficial: Bs. {exchangeRate.toFixed(2)} / $</strong>
-          </text>
-          <text fg="cyan">
-            {NF.city} Ciudad: <strong>[{selectedCity}]</strong> (Presiona [c] para cambiar)
-          </text>
+        <box flexDirection="row">
+          <text fg={THEME.gold}><strong>Tasa BCV: Bs. {exchangeRate.toFixed(2)}/$</strong></text>
+          <text fg={THEME.grayMuted}>  |  </text>
+          <text fg={THEME.blueAccent}><strong>Ciudad: [{selectedCity}]</strong></text>
         </box>
       </box>
 
-      {/* Barra de Tabs y Buscador */}
-      <box border paddingX={1} marginBottom={1} style={{ borderColor: "cyan" }} flexDirection="row" justifyContent="space-between">
+      {/* Barra de Pestañas y Buscador (3 filas exactas) */}
+      <box height={3} border borderStyle="rounded" borderColor={THEME.borderNavy} paddingX={1} flexDirection="row" justifyContent="space-between" alignItems="center">
         <box flexDirection="row">
-          <text fg={activeTab === "products" ? "green" : "gray"}>
-            <strong>[1] {NF.pill} Productos</strong>
+          <text fg={activeTab === "products" ? THEME.gold : THEME.grayMuted}>
+            <strong>[1] Productos</strong>
           </text>
-          <text fg="gray">  |  </text>
-          <text fg={activeTab === "stores" ? "green" : "gray"}>
-            <strong>[2] {NF.store} Farmacias</strong>
+          <text fg={THEME.grayMuted}> | </text>
+          <text fg={activeTab === "stores" ? THEME.gold : THEME.grayMuted}>
+            <strong>[2] Farmacias</strong>
           </text>
-          <text fg="gray">  |  </text>
-          <text fg={activeTab === "departments" ? "green" : "gray"}>
-            <strong>[3] {NF.tag} Departamentos</strong>
+          <text fg={THEME.grayMuted}> | </text>
+          <text fg={activeTab === "departments" ? THEME.gold : THEME.grayMuted}>
+            <strong>[3] Deptos</strong>
           </text>
-          <text fg="gray">  |  </text>
-          <text fg={activeTab === "cities" ? "green" : "gray"}>
-            <strong>[4] {NF.city} Ciudades</strong>
+          <text fg={THEME.grayMuted}> | </text>
+          <text fg={activeTab === "cities" ? THEME.gold : THEME.grayMuted}>
+            <strong>[4] Ciudades</strong>
           </text>
         </box>
+
         <box>
           {isSearching ? (
-            <text fg="yellow"><strong>Buscar: [{searchInput}_] (Enter: buscar, Esc: salir)</strong></text>
+            <text fg={THEME.gold}><strong>Buscar: [{searchInput}_] (Enter: buscar, Esc: cancelar)</strong></text>
           ) : (
-            <text fg="cyan">Búsqueda actual: "{searchQuery}" {selectedDepartment ? `[${selectedDepartment}]` : ""} (Presiona [/])</text>
+            <text fg={THEME.blueAccent}>
+              <span fg={THEME.grayMuted}>Filtro: </span>
+              <strong>"{searchQuery}"</strong>
+              <span fg={THEME.grayMuted}> [Presiona /]</span>
+            </text>
           )}
         </box>
       </box>
 
-      {/* Contenido Central: Panel Dividido */}
+      {/* Contenido Central: Panel Dividido con Control Estricto de Altura */}
       {loading ? (
-        <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">
-          <text fg="cyan"><strong>{currentSpinnerFrame} Conectando con Farmatodo Venezuela...</strong></text>
+        <box height={availableContentHeight} justifyContent="center" alignItems="center" flexDirection="column">
+          <text fg={THEME.blueAccent}><strong>{currentSpinnerFrame} Consultando servicios de Farmatodo...</strong></text>
         </box>
       ) : (
-        <box flexDirection="row" flexGrow={1}>
-          {/* Panel Izquierdo: Lista de Resultados */}
-          <box width="50%" flexDirection="column" paddingRight={1} border style={{ borderColor: "gray" }}>
-            <scrollbox height={rows - 10}>
+        <box height={availableContentHeight} flexDirection="row">
+          {/* Panel Izquierdo: Lista Paginada (Evita 100% el desbordamiento) */}
+          <box width="50%" height={availableContentHeight} border borderStyle="rounded" borderColor={THEME.borderNavy} paddingX={1} flexDirection="column" overflow="hidden">
+            <box height={1} marginBottom={1} flexDirection="row" justifyContent="space-between">
+              <text fg={THEME.blueAccent}>
+                <strong>
+                  {activeTab === "products" && `PRODUCTOS (${products.length})`}
+                  {activeTab === "stores" && `FARMACIAS EN ${selectedCity} (${stores.length})`}
+                  {activeTab === "departments" && `DEPARTAMENTOS (${departments.length})`}
+                  {activeTab === "cities" && `CIUDADES (${cities.length})`}
+                </strong>
+              </text>
+              <text fg={THEME.grayMuted}>
+                {currentListLength > 0 ? `${selectedIndex + 1}/${currentListLength}` : "0/0"}
+              </text>
+            </box>
+
+            <box flexGrow={1} flexDirection="column" overflow="hidden">
+              {/* TAB 1: PRODUCTOS */}
               {activeTab === "products" && (
                 products.length === 0 ? (
-                  <text fg="yellow">No se encontraron productos para "{searchQuery}". Presiona [/] para buscar otro término.</text>
+                  <text fg={THEME.amber}>No hay resultados para "{searchQuery}". Presiona [/] para buscar.</text>
                 ) : (
-                  products.map((p, idx) => {
-                    const isSel = idx === selectedIndex;
+                  products.slice(scrollOffset, scrollOffset + maxVisibleItems).map((p, relIdx) => {
+                    const absIdx = scrollOffset + relIdx;
+                    const isSel = absIdx === selectedIndex;
                     const priceBs = formatBs(p.fullPrice);
                     const priceUsd = formatUsd(p.fullPrice, exchangeRate);
                     const stockCount = p.stores_with_stock?.length || 0;
-                    const stockText = stockCount > 0 ? `✔ ${stockCount} tiendas` : "✖ Sin stock";
+                    const stockText = stockCount > 0 ? `✔ ${stockCount} tiend.` : "✖ Sin stock";
 
                     return (
-                      <box key={idx} flexDirection="column" marginBottom={1}>
-                        <text fg={isSel ? "yellow" : "white"}>
-                          <strong>{isSel ? "▶ " : "  "}{p.mediaDescription.slice(0, 38)}</strong>
+                      <box key={p.id} flexDirection="column" marginBottom={1}>
+                        <text fg={isSel ? THEME.gold : THEME.white}>
+                          <strong>{isSel ? "▸ " : "  "}{p.mediaDescription.slice(0, 36)}</strong>
                         </text>
-                        <text fg={isSel ? "green" : "gray"}>
+                        <text fg={isSel ? THEME.blueAccent : THEME.grayMuted}>
                           {"    "}{priceBs} ({priceUsd})  •  {stockText}
                         </text>
                       </box>
@@ -484,122 +525,145 @@ function FarmatodoApp() {
                 )
               )}
 
+              {/* TAB 2: FARMACIAS */}
               {activeTab === "stores" && (
                 stores.length === 0 ? (
-                  <text fg="yellow">No se encontraron farmacias registradas para {selectedCity}.</text>
+                  <text fg={THEME.amber}>No hay farmacias registradas para {selectedCity}.</text>
                 ) : (
-                  stores.map((st, idx) => {
-                    const isSel = idx === selectedIndex;
+                  stores.slice(scrollOffset, scrollOffset + maxVisibleItems).map((st, relIdx) => {
+                    const absIdx = scrollOffset + relIdx;
+                    const isSel = absIdx === selectedIndex;
                     const dist = st.distanceInKm ? ` (~${st.distanceInKm.toFixed(1)} km)` : "";
                     return (
-                      <box key={idx} flexDirection="column" marginBottom={1}>
-                        <text fg={isSel ? "yellow" : "white"}>
-                          <strong>{isSel ? "▶ " : "  "}{st.name}{dist}</strong>
+                      <box key={st.id} flexDirection="column" marginBottom={1}>
+                        <text fg={isSel ? THEME.gold : THEME.white}>
+                          <strong>{isSel ? "▸ " : "  "}{st.name}{dist}</strong>
                         </text>
-                        <text fg="gray">{"    "}{st.address.slice(0, 40)}</text>
+                        <text fg={THEME.grayMuted}>{"    "}{st.address.slice(0, 38)}</text>
                       </box>
                     );
                   })
                 )
               )}
 
+              {/* TAB 3: DEPARTAMENTOS */}
               {activeTab === "departments" && (
-                departments.map((d, idx) => {
-                  const isSel = idx === selectedIndex;
+                departments.slice(scrollOffset, scrollOffset + (maxVisibleItems * 2)).map((d, relIdx) => {
+                  const absIdx = scrollOffset + relIdx;
+                  const isSel = absIdx === selectedIndex;
                   return (
-                    <box key={idx} marginBottom={1}>
-                      <text fg={isSel ? "yellow" : "white"}>
-                        <strong>{isSel ? "▶ " : "  "}{d.name}</strong>
+                    <box key={d.name} marginBottom={1}>
+                      <text fg={isSel ? THEME.gold : THEME.white}>
+                        <strong>{isSel ? "▸ " : "  "}{d.name}</strong>
                       </text>
-                      <text fg="green"> ({d.count} productos)</text>
+                      <text fg={THEME.blueAccent}> ({d.count})</text>
                     </box>
                   );
                 })
               )}
 
+              {/* TAB 4: CIUDADES */}
               {activeTab === "cities" && (
-                cities.map((c, idx) => {
-                  const isSel = idx === selectedIndex;
+                cities.slice(scrollOffset, scrollOffset + (maxVisibleItems * 2)).map((c, relIdx) => {
+                  const absIdx = scrollOffset + relIdx;
+                  const isSel = absIdx === selectedIndex;
                   const isCurrent = c.cityId === selectedCity;
                   return (
-                    <box key={idx} marginBottom={1}>
-                      <text fg={isSel ? "yellow" : isCurrent ? "green" : "white"}>
-                        <strong>{isSel ? "▶ " : "  "}[{c.cityId}] {c.name}</strong>
+                    <box key={c.cityId} marginBottom={1}>
+                      <text fg={isSel ? THEME.gold : isCurrent ? THEME.green : THEME.white}>
+                        <strong>{isSel ? "▸ " : "  "}[{c.cityId}] {c.name}</strong>
                       </text>
-                      {isCurrent && <text fg="cyan"> (Activa)</text>}
+                      {isCurrent && <text fg={THEME.blueAccent}> (Activa)</text>}
                     </box>
                   );
                 })
               )}
-            </scrollbox>
+            </box>
           </box>
 
-          {/* Panel Derecho: Vista Previa y Detalles */}
-          <box width="50%" flexDirection="column" paddingLeft={1} border style={{ borderColor: "gray" }}>
+          {/* Panel Derecho: Tarjeta de Ficha y Vista Previa */}
+          <box width="50%" height={availableContentHeight} border borderStyle="rounded" borderColor={THEME.borderNavy} paddingX={1} flexDirection="column" overflow="hidden">
             {activeTab === "products" && currentProduct && (
               <box flexDirection="column">
-                <text fg="yellow"><strong>[DETALLE DEL PRODUCTO SELECCIONADO]</strong></text>
+                <text fg={THEME.blueAccent}><strong>[INFORMACIÓN DEL MEDICAMENTO]</strong></text>
                 <box height={1} />
-                <text fg="white"><strong>{currentProduct.mediaDescription}</strong></text>
-                <text fg="gray">Marca: {currentProduct.marca || "N/A"} | ID: #{currentProduct.id}</text>
+                <text fg={THEME.white}><strong>{currentProduct.mediaDescription}</strong></text>
+                <text fg={THEME.grayMuted}>Marca: {currentProduct.marca || "N/A"} | ID: #{currentProduct.id}</text>
                 
                 <box height={1} />
-                <text fg="green"><strong>Precio Bs: {formatBs(currentProduct.fullPrice)}</strong></text>
-                <text fg="yellow"><strong>Precio USD: {formatUsd(currentProduct.fullPrice, exchangeRate)}</strong></text>
+                <text fg={THEME.green}><strong>Precio Bs: {formatBs(currentProduct.fullPrice)}</strong></text>
+                <text fg={THEME.gold}><strong>Precio USD: {formatUsd(currentProduct.fullPrice, exchangeRate)}</strong></text>
 
-                <box height={1} />
                 {currentProduct.requirePrescription === "true" && (
-                  <text fg="red"><strong>{NF.warning} Requiere Récipe Médico</strong></text>
+                  <box marginTop={1}>
+                    <text fg={THEME.rxRed}><strong>[!] Requiere Récipe Médico Obligatorio</strong></text>
+                  </box>
                 )}
 
                 <box height={1} />
-                <text fg="cyan"><strong>{NF.store} Tiendas con stock: {currentProduct.stores_with_stock?.length || 0}</strong></text>
-                <text fg="gray">Ciudad activa: {selectedCity}</text>
+                <text fg={THEME.blueAccent}>
+                  <strong>Disponibilidad: {currentProduct.stores_with_stock?.length || 0} sucursales activas</strong>
+                </text>
+                <text fg={THEME.grayMuted}>Ciudad consultada: {selectedCity}</text>
 
                 <box height={1} />
-                <text fg="magenta"><strong>{NF.image} Presiona [p] o [i] para ver la foto en terminal!</strong></text>
-                <text fg="gray">Presiona [Enter] para ver disponibilidad por farmacia.</text>
+                <text fg={THEME.gold}><strong>[p] o [i]: Ver fotografía oficial en terminal</strong></text>
+                <text fg={THEME.grayLight}>[Enter]: Ver desglose de farmacias con stock</text>
               </box>
             )}
 
             {activeTab === "stores" && stores[selectedIndex] && (
               <box flexDirection="column">
-                <text fg="yellow"><strong>[INFORMACIÓN DE SUCURSAL]</strong></text>
+                <text fg={THEME.blueAccent}><strong>[SUCURSAL FARMATODO]</strong></text>
                 <box height={1} />
-                <text fg="white"><strong>{stores[selectedIndex].name}</strong></text>
-                <text fg="gray">ID Tienda: #{stores[selectedIndex].id}</text>
+                <text fg={THEME.white}><strong>{stores[selectedIndex].name}</strong></text>
+                <text fg={THEME.grayMuted}>ID Sucursal: #{stores[selectedIndex].id}</text>
                 <box height={1} />
-                <text fg="cyan">Dirección:</text>
-                <text fg="white">{stores[selectedIndex].address}</text>
+                <text fg={THEME.blueAccent}>Dirección:</text>
+                <text fg={THEME.grayLight}>{stores[selectedIndex].address}</text>
+                <box height={1} />
+                <text fg={THEME.green}>✔ Servicio Farmacéutico y Convenios</text>
               </box>
             )}
 
             {activeTab === "departments" && departments[selectedIndex] && (
               <box flexDirection="column">
-                <text fg="yellow"><strong>[FILTRAR POR DEPARTAMENTO]</strong></text>
+                <text fg={THEME.blueAccent}><strong>[FILTRAR POR DEPARTAMENTO]</strong></text>
                 <box height={1} />
-                <text fg="white">Presiona [Enter] para filtrar los productos de la categoría: {departments[selectedIndex].name}</text>
+                <text fg={THEME.white}><strong>{departments[selectedIndex].name}</strong></text>
+                <text fg={THEME.gold}>{departments[selectedIndex].count} productos en catálogo</text>
+                <box height={1} />
+                <text fg={THEME.grayLight}>Presiona [Enter] para cargar los productos de este departamento.</text>
               </box>
             )}
 
             {activeTab === "cities" && cities[selectedIndex] && (
               <box flexDirection="column">
-                <text fg="yellow"><strong>[CAMBIO DE CIUDAD]</strong></text>
+                <text fg={THEME.blueAccent}><strong>[SELECCIÓN DE CIUDAD]</strong></text>
                 <box height={1} />
-                <text fg="white">Presiona [Enter] para seleccionar [{cities[selectedIndex].cityId}] {cities[selectedIndex].name} como tu ciudad principal.</text>
+                <text fg={THEME.white}><strong>{cities[selectedIndex].name} ({cities[selectedIndex].cityId})</strong></text>
+                <text fg={THEME.grayMuted}>Tienda principal: #{cities[selectedIndex].defaultStoreId}</text>
                 <box height={1} />
-                <text fg="gray">Esto actualizará automáticamente la consulta de stock en las farmacias de esa ciudad.</text>
+                <text fg={THEME.gold}>Presiona [Enter] para establecer como tu ciudad.</text>
+                <text fg={THEME.grayMuted}>El inventario y disponibilidad se adaptarán a esta ubicación.</text>
               </box>
             )}
           </box>
         </box>
       )}
 
-      {/* Footer con Hotkeys */}
-      <box border marginTop={1} paddingX={1} flexDirection="row" justifyContent="space-between" style={{ borderColor: "cyan" }}>
-        <text fg="yellow">
-          <strong>[Tab/1-4] Vistas  |  [/] Buscar  |  [↑/↓] Navegar  |  [Enter] Detalle  |  [p/i] {NF.image} Foto  |  [c] Ciudad  |  [q] Salir</strong>
+      {/* Footer Fijo con Hotkeys (3 filas exactas) */}
+      <box height={3} border borderStyle="rounded" borderColor={THEME.blueAccent} paddingX={1} flexDirection="row" justifyContent="space-between" alignItems="center">
+        <text fg={THEME.white}>
+          <span fg={THEME.gold}><strong>[Tab/1-4]</strong></span> Vistas  |  
+          <span fg={THEME.gold}><strong> [/]</strong></span> Buscar  |  
+          <span fg={THEME.gold}><strong> [↑/↓]</strong></span> Navegar  |  
+          <span fg={THEME.gold}><strong> [Enter]</strong></span> Detalle  |  
+          <span fg={THEME.gold}><strong> [p/i]</strong></span> Foto  |  
+          <span fg={THEME.gold}><strong> [c]</strong></span> Ciudad  |  
+          <span fg={THEME.gold}><strong> [q]</strong></span> Salir
         </text>
+        <text fg={THEME.blueAccent}><strong>v1.0.0</strong></text>
       </box>
     </box>
   );
