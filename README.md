@@ -12,19 +12,21 @@ farmatodo pero para la gente q le gusta full usar la compu
 
 ## Instalacion
 
-Ejecuta el script de instalacion automatica en tu terminal:
-
+### Linux y macOS (Bash / Zsh)
 ```bash
 curl -fsSL https://raw.githubusercontent.com/italovisconti/farmatodo-cli/master/install.sh | bash
 ```
 
-O si ya tienes el repositorio clonado:
-
-```bash
-./install.sh
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/italovisconti/farmatodo-cli/master/install.ps1 | iex
 ```
 
-El script se encarga de compilar el binario nativo independiente e instalarlo en `~/.local/bin/farmatodo`.
+O si ya tienes el repositorio clonado:
+- En Linux / macOS: `./install.sh`
+- En Windows (PowerShell): `.\install.ps1`
+
+El script se encarga de verificar o instalar Bun, compilar el binario nativo independiente e instalar `farmatodo` directamente en tu PATH.
 
 ---
 
