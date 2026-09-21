@@ -743,6 +743,8 @@ export class FarmatodoTUI {
 
     const curProd = this.getCurrentProduct();
     if (this.activeTab === "products" && curProd) {
+      const panelWidth = Math.max(28, Math.floor(this.renderer.width * 0.5) - 6);
+
       // 1. Ficha de detalles del producto
       const detailText = new BoxRenderable(this.renderer, {
         flexDirection: "column",
@@ -751,12 +753,24 @@ export class FarmatodoTUI {
       });
       this.rightDetailBox.add(detailText);
 
+      // Badges superiores de clasificación
+      const deptoName = curProd.departments?.[0] || "Salud y Medicamentos";
+      const isRx = curProd.requirePrescription === "true" || curProd.requirePrescription === true;
+      const stockCount = curProd.stores_with_stock?.length || 0;
+
+      const headerBadges = [
+        isRecommended ? `${G.sparkles} DESTACADO` : `${G.pill} ${deptoName.slice(0, 18)}`,
+        isRx ? `${G.warning} RÉCIPE` : null,
+        stockCount > 0 ? `${G.check} EN STOCK (${stockCount})` : `✗ AGOTADO`
+      ].filter(Boolean).join(`  ${G.bullet}  `);
+
       detailText.add(new TextRenderable(this.renderer, {
-        content: isRecommended ? `${G.sparkles} [PRODUCTO RECOMENDADO]` : `${G.pill} [FICHA DE MEDICAMENTO]`,
-        fg: THEME.blueAccent
+        content: headerBadges,
+        fg: isRx ? THEME.rxRed : THEME.blueAccent
       }));
 
-      const descLines = wrapText(curProd.mediaDescription || "", 44);
+      // Nombre / Presentación del producto con wrapping seguro
+      const descLines = wrapText(curProd.mediaDescription || "", panelWidth);
       for (const line of descLines.slice(0, 2)) {
         detailText.add(new TextRenderable(this.renderer, {
           content: line,
@@ -764,37 +778,51 @@ export class FarmatodoTUI {
         }));
       }
 
+      // Categoría / Marca / ID
+      const metaParts: string[] = [];
+      if (curProd.subCategory) {
+        metaParts.push(curProd.subCategory.slice(0, 16));
+      }
+      metaParts.push(`Marca: ${(curProd.marca || "N/A").slice(0, 14)}`);
+      metaParts.push(`ID: #${curProd.id}`);
 
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.tag} Marca: ${(curProd.marca || "N/A").slice(0, 20)}  ${G.bullet}  ID: #${curProd.id}`,
+        content: `${G.tag} ${metaParts.join(`  ${G.bullet}  `)}`,
         fg: THEME.grayMuted
       }));
 
+      // Precios en Bolívares y Dólares
+      const priceBs = formatBs(curProd.fullPrice);
+      const priceUsd = formatUsd(curProd.fullPrice, this.exchangeRate);
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.dollar} Precio: ${formatBs(curProd.fullPrice)} (${formatUsd(curProd.fullPrice, this.exchangeRate)})`,
+        content: `${G.dollar} Precio: ${priceBs} (${priceUsd})`,
         fg: THEME.green
       }));
 
-      if (curProd.requirePrescription === "true" || curProd.requirePrescription === true) {
+      // Aviso de récipe obligatorio si aplica
+      if (isRx) {
         detailText.add(new TextRenderable(this.renderer, {
-          content: `${G.warning} [!] Requiere récipe obligatorio`,
+          content: `${G.warning} [!] Requiere presentación de récipe médico`,
           fg: THEME.rxRed
         }));
       }
 
+      // Disponibilidad en la ciudad seleccionada
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.check} ${curProd.stores_with_stock?.length || 0} farmacias con stock en ${this.selectedCity}`,
+        content: `${G.city} ${stockCount} farmacias con disponibilidad en ${this.selectedCity}`,
         fg: THEME.blueAccent
       }));
 
+      // Atajos de acción directos (compacto para evitar wraps accidentales)
       detailText.add(new TextRenderable(this.renderer, {
-        content: `${G.enter} [Enter] Sucursales  ${G.bullet}  ${G.globe} [o] Web`,
+        content: `${G.enter} Sucursales  ${G.bullet}  ${G.camera} [p] Zoom  ${G.bullet}  ${G.globe} [o] Web`,
         fg: THEME.gold
       }));
 
-      // 2. Tarjeta permanente de imagen ubicada debajo de los detalles
+      // 2. Tarjeta permanente de imagen: escala dinámicamente ocupando el espacio disponible
       const imageContainer = new BoxRenderable(this.renderer, {
-        height: 8,
+        flexGrow: 1,
+        minHeight: 8,
         width: "100%",
         border: true,
         borderStyle: "rounded",
@@ -804,7 +832,6 @@ export class FarmatodoTUI {
         alignItems: "center",
         justifyContent: "center",
         marginTop: 1,
-        flexShrink: 0,
         overflow: "hidden"
       });
       this.rightDetailBox.add(imageContainer);
@@ -814,15 +841,15 @@ export class FarmatodoTUI {
         if (cached) {
           const img = new ImageRenderable(this.renderer, {
             source: cached,
-            width: 22,
-            height: 6,
-            fit: "contain",
+            width: "100%",
+            height: "100%",
+            fit: "fit",
             protocol: "blocks"
           });
           imageContainer.add(img);
         } else {
           imageContainer.add(new TextRenderable(this.renderer, {
-            content: ` ${G.camera} Cargando imagen...`,
+            content: ` ${G.camera} Cargando imagen oficial...`,
             fg: THEME.grayMuted
           }));
           preloadNativeImage(curProd.mediaImageUrl, () => {
@@ -834,7 +861,7 @@ export class FarmatodoTUI {
         }
       } else {
         imageContainer.add(new TextRenderable(this.renderer, {
-          content: ` ${G.camera} [Sin imagen disponible]`,
+          content: ` ${G.camera} [Sin fotografía oficial disponible]`,
           fg: THEME.grayMuted
         }));
       }
@@ -1028,8 +1055,8 @@ export class FarmatodoTUI {
 
       if (p.mediaImageUrl) {
         const modalImageBox = new BoxRenderable(this.renderer, {
-          width: 22,
-          height: 9,
+          width: 28,
+          height: 12,
           border: true,
           borderStyle: "rounded",
           borderColor: THEME.blueAccent,
@@ -1044,9 +1071,9 @@ export class FarmatodoTUI {
         if (cached) {
           modalImageBox.add(new ImageRenderable(this.renderer, {
             source: cached,
-            width: 18,
-            height: 7,
-            fit: "contain",
+            width: "100%",
+            height: "100%",
+            fit: "fit",
             protocol: "blocks"
           }));
         } else {
