@@ -6,6 +6,18 @@ import path from "path";
 const imageCache = new Map<string, string>();
 
 /**
+ * Envía el comando de Kitty Graphics Protocol para eliminar cualquier imagen flotante del búfer
+ */
+export function clearKittyImages() {
+  if (process.env.NODE_ENV === "test" || process.env.BUN_TEST || !process.stdout || !process.stdout.isTTY) {
+    return;
+  }
+  try {
+    process.stdout.write("\x1b_Ga=d,d=A\x1b\\");
+  } catch (_) {}
+}
+
+/**
  * Renderiza la imagen de un producto en la terminal
  */
 export async function renderProductImage(imageUrl: string, width = 40): Promise<string> {
@@ -42,10 +54,10 @@ export async function renderProductImage(imageUrl: string, width = 40): Promise<
       // Continuar a fallback
     }
 
-    // Prioridad 2: terminal-image
+    // Prioridad 2: terminal-image forzando renderizado en semibloques ANSI puros (evita Kitty escapes flotantes no administrados)
     const renderFn = typeof terminalImage === "function" ? terminalImage : (terminalImage as any).buffer;
     if (typeof renderFn === "function") {
-      const ascii = await renderFn(buffer, { width });
+      const ascii = await renderFn(buffer, { width, preferNativeRender: false });
       imageCache.set(cacheKey, ascii);
       return ascii;
     }

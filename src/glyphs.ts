@@ -52,7 +52,7 @@ const NERD_KITTY_GLYPHS: Glyphs = {
   warning: "\uf071",     //  Warning triangle
   star: "\uf005",        //  Star
   sparkles: "\uf005",    //  Star
-  lightning: "\u26a1",   // ⚡ Lightning
+  lightning: "\uf0e7",   //  fa-bolt (Nerd Font)
   image: "\uf030",       //  Camera
   camera: "\uf030",      //  Camera
   clock: "\uf017",       //  Clock

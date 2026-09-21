@@ -249,6 +249,25 @@ async function main() {
     setup.renderer.destroy();
   }
 
+  // 6. Vista Modal de Imagen
+  {
+    const setup = await createTestRenderer({ width: 100, height: 26 });
+    const app = new FarmatodoTUI(setup.renderer);
+    app.loading = false;
+    app.exchangeRate = 849.56;
+    app.selectedCity = "CCS";
+    app.products = mockProducts;
+    app.stores = mockStores;
+    app.cities = mockCities;
+    app.selectedIndex = 0;
+    app.showImageView = true;
+    app.imageArt = "[ Fotografía oficial del producto ]\n\n  █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█\n  █  FARMATODO VE  █\n  █  CALOX 500mg   █\n  █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█";
+    app.updateView();
+
+    await captureAndSave(setup, "tui_image_modal.png", "Farmatodo TUI — Visor de Fotografía Oficial");
+    setup.renderer.destroy();
+  }
+
   console.log(" All screenshots generated in .screenshots/");
 }
 

@@ -100,8 +100,8 @@ export async function runCLI(argv: string[]) {
 
           const stockCount = p.stores_with_stock?.length || 0;
           const stockBadge = stockCount > 0
-            ? pc.green(`✔ En ${stockCount} sucursales`)
-            : pc.red(`✖ Sin stock online`);
+            ? pc.green(`${NF.check} En ${stockCount} sucursales`)
+            : pc.red(`${NF.crossMark} Sin stock online`);
 
           console.log(`${num}${title}${brand} ${id}${rxBadge}`);
           console.log(`    ${NF.tag} Precio: ${priceFormatted}  |  ${NF.store} ${stockBadge}`);
@@ -200,7 +200,7 @@ export async function runCLI(argv: string[]) {
             const badge = isLowStock
               ? pc.yellow(`[Pocas unidades]`)
               : pc.green(`[Disponible]`);
-            console.log(` ${pc.green("✔")} ${pc.bold(store.name.padEnd(16, " "))} ${badge}  ${pc.gray(store.address)}`);
+            console.log(` ${pc.green(NF.check)} ${pc.bold(store.name.padEnd(16, " "))} ${badge}  ${pc.gray(store.address)}`);
           });
 
           if (unavailable.length > 0) {
@@ -442,7 +442,7 @@ export async function runCLI(argv: string[]) {
     .description("Establecer la ciudad predeterminada (ej: CCS, VAL, MCBO, BQTO)")
     .action((codigo) => {
       const updated = saveConfig({ defaultCity: codigo.toUpperCase() });
-      console.log(pc.green(`\n✔ Ciudad predeterminada actualizada a: ${pc.bold(updated.defaultCity)}\n`));
+      console.log(pc.green(`\n${NF.check} Ciudad predeterminada actualizada a: ${pc.bold(updated.defaultCity)}\n`));
     });
 
   await program.parseAsync(argv);

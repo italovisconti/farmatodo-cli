@@ -2,6 +2,7 @@ import {
   createCliRenderer,
   BoxRenderable,
   TextRenderable,
+  ImageRenderable,
   type CliRenderer
 } from "@opentui/core";
 import {
@@ -13,7 +14,7 @@ import {
   getProductStockInStores,
   getDepartments
 } from "./api";
-import { renderProductImage, openImageInBrowser } from "./image";
+import { renderProductImage, openImageInBrowser, clearKittyImages } from "./image";
 import { loadConfig, saveConfig } from "./config";
 import { getGlyphs } from "./glyphs";
 import type { FarmatodoProduct, City, Store } from "./types";
@@ -258,6 +259,7 @@ export class FarmatodoTUI {
       if (this.showImageView) {
         if (event.name === "escape" || event.name === "p" || event.name === "i" || event.name === "q") {
           this.showImageView = false;
+          clearKittyImages();
           this.updateModal();
           return;
         }
@@ -273,6 +275,7 @@ export class FarmatodoTUI {
       if (this.detailModalProduct) {
         if (event.name === "escape" || event.name === "q") {
           this.detailModalProduct = null;
+          clearKittyImages();
           this.updateModal();
           return;
         }
@@ -289,6 +292,7 @@ export class FarmatodoTUI {
 
       // 4. Controles globales
       if (event.name === "q") {
+        clearKittyImages();
         this.renderer.destroy();
         process.exit(0);
         return;
@@ -463,6 +467,7 @@ export class FarmatodoTUI {
 
   async openTerminalImage(prod: FarmatodoProduct) {
     if (!prod || !prod.mediaImageUrl) return;
+    clearKittyImages();
     this.showImageView = true;
     this.loadingImage = true;
     this.imageArt = "";
@@ -611,7 +616,7 @@ export class FarmatodoTUI {
           const priceUsd = formatUsd(p.fullPrice, this.exchangeRate);
           const stockCount = p.stores_with_stock?.length || 0;
           const stockText = stockCount > 0 ? `${G.check} ${stockCount} disp.` : `${G.crossMark} Agotado`;
-          const rxBadge = (p.requirePrescription === "true" || p.requirePrescription === true) ? "⚠️ " : "";
+          const rxBadge = (p.requirePrescription === "true" || p.requirePrescription === true) ? `${G.warning} ` : "";
           const pointer = isSel ? `${G.pointer} ` : "  ";
 
           const titleTxt = new TextRenderable(this.renderer, {
@@ -826,10 +831,17 @@ export class FarmatodoTUI {
           fg: THEME.blueAccent
         }));
       } else {
-        modalBox.add(new TextRenderable(this.renderer, {
+        const imageContentBox = new BoxRenderable(this.renderer, {
+          flexGrow: 1,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center"
+        });
+        imageContentBox.add(new TextRenderable(this.renderer, {
           content: this.imageArt || "[Sin imagen disponible]",
           fg: THEME.white
         }));
+        modalBox.add(imageContentBox);
       }
 
       const footerModal = new BoxRenderable(this.renderer, {
@@ -986,7 +998,24 @@ export class FarmatodoTUI {
 }
 
 export async function renderTUI() {
+  clearKittyImages();
   const renderer = await createCliRenderer();
   const app = new FarmatodoTUI(renderer);
+
+  const cleanup = () => {
+    clearKittyImages();
+  };
+  process.on("exit", cleanup);
+  process.on("SIGINT", () => {
+    cleanup();
+    renderer.destroy();
+    process.exit(0);
+  });
+  process.on("SIGTERM", () => {
+    cleanup();
+    renderer.destroy();
+    process.exit(0);
+  });
+
   await app.loadInitialData();
 }
